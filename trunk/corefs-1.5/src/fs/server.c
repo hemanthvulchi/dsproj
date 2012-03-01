@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/types.h>
@@ -31,10 +33,8 @@ corefs_server_operations my_ops; /* This should be initialized only
                                   * locking */
 int server_port = SERVER_PORT;
 
-
 #define FDLEN 10
-
-#define MAXCONN 5
+#define MAXCONN 10
 
 char* g_buffer;
 char* g_buffer2;
@@ -50,39 +50,36 @@ int become_daemon = 0;
 int fork_client = 0;   
 void error_reply(COMMCTX* ctx, int seq, int my_errno)
 {
-  
-    int size = build_status((corefs_packet*)g_buffer, my_errno,
-                            COREFS_RESPONSE_ERROR);
+    int size = build_status((corefs_packet*)g_buffer, my_errno, COREFS_RESPONSE_ERROR);
     int ret = encap_corefs_header(g_buffer2,(corefs_packet*)g_buffer);
     encap_corefs_response(g_buffer2 + ret, (corefs_packet*)g_buffer);
     send_packet(ctx, g_buffer2, size);
 }
 
 int handle_open(const char * path, int flags){
+    printf("Open : %s\n",path);
     int ret = open(path, flags);
-    if(ret > 0)
-        close(ret);
+    if(ret > 0) close(ret);
     return ret;
 }
 
 int handle_release(const char * path, int flags){
+    printf("handle_release\n");
     return 0;
 }
 
 int handle_access(const char * path, int mode){
+    printf("handle_access\n");
     return access(path,mode);
 }
 
 int handle_read(COMMCTX* ctx, corefs_packet* cmd)
 {
-
     FILE* f;
     int ret;
-
-  
+    printf("handle_read\n");
     /* Check with the security layer if the user should be allowed to
      * access the file */
-  
     if(my_ops.up_check_access){
         if(my_ops.up_check_access(ctx, &(cmd->payload.request.user_ids), &ret, cmd->payload.request.op.fileop.path, NULL, cmd->payload.request.type) != PROCEED){
             fprintf(stderr, "check_access: access denied\n");
@@ -91,19 +88,16 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
         }
     }
   
-  
     const char* path = cmd->payload.request.op.fileop.path;
     unsigned int offset = cmd->payload.request.op.fileop.offset;
     unsigned int size = cmd->payload.request.op.fileop.size;
     unsigned int packet_size = 0;
-
+	printf("Path : %s\n",path);
   
 #ifdef DEBUG
     dprintf(stderr, "READ: file \'%s\'.\n", path);
 #endif
 
-
-  
     f=fopen(path, "r");
     if (!f) {
         dprintf(stderr, "fopen failed.\n");
@@ -137,8 +131,7 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
     }
     fclose(f);
 
-    packet_size = build_response_data(reply, reply->payload.response.rop.raw,
-                                      ret);
+    packet_size = build_response_data(reply, reply->payload.response.rop.raw, ret);
     char reply_buf[packet_size];
   
     /*   Encap response */
@@ -150,11 +143,11 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
 #endif  
     send_packet(ctx, reply_buf, packet_size);
     return 0;
-	
 }
 
 int handle_write(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle write\n");
     corefs_packet* data=(corefs_packet*)g_buffer; // the data
 
     FILE* f;
@@ -164,8 +157,7 @@ int handle_write(COMMCTX* ctx, corefs_packet* cmd)
     unsigned int offset = cmd->payload.request.op.fileop.offset;
     unsigned int size = cmd->payload.request.op.fileop.size;
 #ifdef DEBUG
-    dprintf(stderr, "WRTIE: file \'%s\' offset %u size %u \n", path,
-            offset, size);
+    dprintf(stderr, "WRTIE: file \'%s\' offset %u size %u \n", path, offset, size);
 #endif
 
     /* Check with the security layer if the user should be allowed to
@@ -198,19 +190,14 @@ int handle_write(COMMCTX* ctx, corefs_packet* cmd)
         return -1;
     }
   
-
     ret = data->header.payload_size - REQUEST_BASE_SIZE(data->payload.request);
-  
-  
     if (ret != size) {
         dprintf(stderr, "data packet size (%i) disagrees with size of write (%i).\n",	ret, size);
         error_reply(ctx, cmd->header.sequence, EPROTO);
         return -1;
     }
-
   
     ret = fwrite(data->payload.request.op.raw, 1, size, f);
-
     if (ret < size) {
         if (ferror(f)) {
             dprintf(stderr, "fwrite failed.\n");
@@ -242,6 +229,7 @@ int handle_write(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_setxattr(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle setxattr\n");
     int ret = 0;
     corefs_packet* data=(corefs_packet*)g_buffer; // the attribute value
     corefs_packet reply;
@@ -267,11 +255,9 @@ int handle_setxattr(COMMCTX* ctx, corefs_packet* cmd)
         return -1;
     }
   
-
     ret = data->header.payload_size - REQUEST_BASE_SIZE(data->payload.request);
     if (ret != sizeofvalue) {
-        dprintf(stderr, "data packet size (%i) disagrees with size of value (%i).\n",
-                ret, sizeofvalue);
+        dprintf(stderr, "data packet size (%i) disagrees with size of value (%i).\n", ret, sizeofvalue);
         error_reply(ctx, cmd->header.sequence, EPROTO);
         return -1;
     }
@@ -286,9 +272,7 @@ int handle_setxattr(COMMCTX* ctx, corefs_packet* cmd)
         }
     }
   
-  
-    ret = setxattr (path, attrname, data->payload.request.op.raw, sizeofvalue,
-                    cmd->payload.request.op.xattr.flags);
+    ret = setxattr (path, attrname, data->payload.request.op.raw, sizeofvalue, cmd->payload.request.op.xattr.flags);
 
     if (ret < 0) {
         dprintf(stderr, "setxattr failed.\n");
@@ -305,6 +289,7 @@ int handle_setxattr(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_getxattr(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle getxattr\n");
     int ret = 0;
     corefs_packet * reply = (corefs_packet*)g_buffer; // the status reply
 
@@ -316,6 +301,7 @@ int handle_getxattr(COMMCTX* ctx, corefs_packet* cmd)
     memset(path, 0, pathlen+1);
     memset(attrname, 0, namelen+1);
     memcpy(path, cmd->payload.request.op.xattr.params, pathlen+1);
+    printf("Path : %s\n",path);
     memcpy(attrname, cmd->payload.request.op.xattr.params+pathlen+1, namelen);
 #ifdef DEBUG
     dprintf(stderr, "GETXATTR: path[%s] attrname [%s].\n", path, attrname);
@@ -331,11 +317,9 @@ int handle_getxattr(COMMCTX* ctx, corefs_packet* cmd)
         }
     }
 	
-    ret = getxattr (path, attrname, reply->payload.response.rop.raw,
-                    sizeofvalue);
+    ret = getxattr (path, attrname, reply->payload.response.rop.raw, sizeofvalue);
     if (ret < 0) {
-        dprintf(stderr, "getxattr failed path[%s] attr. name [%s].\n", path,
-                attrname);
+        dprintf(stderr, "getxattr failed path[%s] attr. name [%s].\n", path, attrname);
         error_reply(ctx, cmd->header.sequence, errno);
         return -1;
     }
@@ -350,8 +334,7 @@ int handle_getxattr(COMMCTX* ctx, corefs_packet* cmd)
         return 0;
     }
     else {  /*  send the attribute value */
-        sizeofvalue =
-            build_response_data(reply,  reply->payload.response.rop.raw, ret);
+        sizeofvalue = build_response_data(reply,  reply->payload.response.rop.raw, ret);
         char buf[sizeofvalue];
         ret = encap_corefs_header(buf, reply);
         encap_corefs_response(buf + ret, reply);
@@ -363,6 +346,7 @@ int handle_getxattr(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_listxattr(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle listxattr\n");
     int ret = 0;
     corefs_packet * reply = (corefs_packet*)g_buffer; // the status reply
 
@@ -415,6 +399,7 @@ int handle_listxattr(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_removexattr(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle removexattr\n");
     int ret = 0;
     corefs_packet * reply = (corefs_packet*)g_buffer; // the status reply
 
@@ -459,6 +444,7 @@ int handle_removexattr(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle readdir\n");
     corefs_packet* reply=(corefs_packet*)g_buffer;
     DIR* d;
     struct dirent* de;
@@ -466,7 +452,6 @@ int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
     const char * path = cmd->payload.request.op.fileop.path;
     off_t prev_offset = 0;
     int ret = 0;
-  
   
 #ifdef DEBUG
     dprintf(stderr, "READDIR: directory \'%s\'.\n", path);
@@ -488,7 +473,6 @@ int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
     }
 	
     seekdir(d, cmd->payload.request.op.fileop.offset);
-  
     reply->payload.response.more_offset = 0;
   
     while((de = readdir(d)) != NULL) {
@@ -506,7 +490,6 @@ int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
             break;
         }
         prev_offset = telldir(d);
-    
     }
   
     closedir(d);
@@ -516,8 +499,7 @@ int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
     if(reply->payload.response.more_offset != 0)
         packet_size = build_response_with_moredata(reply, reply->payload.response.rop.raw, count, reply->payload.response.more_offset);
     else
-        packet_size =
-            build_response_data(reply, reply->payload.response.rop.raw, count);
+        packet_size = build_response_data(reply, reply->payload.response.rop.raw, count);
   
     /* encapsualte it */
     ret =  encap_corefs_header(g_buffer2, reply);
@@ -528,16 +510,18 @@ int handle_readdir(COMMCTX* ctx, corefs_packet* cmd)
 #endif    
     send_packet(ctx, g_buffer2, packet_size);
     return 0;
-	
 }
 
 int handle_getattr(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle getattr\n");
     corefs_packet reply;
     corefs_request req = cmd->payload.request;
   
     struct stat st;
     int ret;
+    //strcpy(req.op.fileop.path,"/tmp/");
+    printf("req.op.fileop.path %s\n", req.op.fileop.path);
   
 #ifdef DEBUG
     dprintf(stderr, "GETATTR: file \'%s\'.\n", req.op.fileop.path);
@@ -573,7 +557,6 @@ int handle_getattr(COMMCTX* ctx, corefs_packet* cmd)
     reply.payload.response.rop.attr.nlinks = st.st_nlink;
     reply.header.payload_size = SIZEOF_ATTR(reply.payload.response.rop.attr) + RESPONSE_BASE_SIZE(reply.payload.response);
   
-
     /* Encapsulate the packet */
     ret = encap_corefs_header(g_buffer, &reply);
     ret += encap_corefs_response(g_buffer + ret, &reply);
@@ -587,9 +570,11 @@ int handle_getattr(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_readlink(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle readlink\n");
     corefs_packet* reply = (corefs_packet*)g_buffer;
     int ret;
     const char* path = cmd->payload.request.op.fileop.path;
+    printf("In read link\n");
     unsigned int size = cmd->payload.request.op.fileop.size;
 #ifdef DEBUG
     dprintf(stderr, "READLINK: file \'%s\'.\n", path);
@@ -614,16 +599,15 @@ int handle_readlink(COMMCTX* ctx, corefs_packet* cmd)
     encap_corefs_response(g_buffer2+ ret, reply);
     send_packet(ctx, g_buffer2, size);
     return 0;
-	
 }
 
 
 /*  Handle a bunch of different commands that don't need */
 /*  to do anything hard and just return status info. */
 /*  This makes the network protocol simpler. */
-
 int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
 {
+    printf("handle simple\n");
     corefs_packet reply;
     int ret = 0;
     corefs_simple * simp = (corefs_simple*)&cmd->payload.request.op.simple;
@@ -634,8 +618,7 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
 
     case COREFS_SIMPLE_UTIME:
 #ifdef DEBUG0
-        dprintf(stderr, "UTIME: \'%s\' w/ actime %u modtime %u mode %o\n",
-                simp->path1, simp->offset, simp->mode1);
+        dprintf(stderr, "UTIME: \'%s\' w/ actime %u modtime %u mode %o\n", simp->path1, simp->offset, simp->mode1);
 #endif
 
         /* Check with the security layer if the user should be allowed to
@@ -719,7 +702,6 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
             }
         }
         ret = my_ops.unlink(simp->path1);
-
         break;
 
     case COREFS_SIMPLE_SYMLINK:
@@ -787,8 +769,8 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
                 return -1;
             }
         }
+	printf("Servr mkdir\n");
         ret = my_ops.mkdir(simp->path1, simp->mode1);
-
         break;
 
     case COREFS_SIMPLE_RMDIR:
@@ -877,6 +859,7 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
 
 int handle_fileop(COMMCTX * ctx, corefs_packet * cmd)
 {
+    printf("handle fileop\n");
     switch(cmd->payload.request.op.fileop.type){
     case COREFS_REQUEST_GETATTR:
         my_ops.handle_getattr(ctx, cmd);
@@ -894,8 +877,7 @@ int handle_fileop(COMMCTX * ctx, corefs_packet * cmd)
         my_ops.handle_readlink(ctx, cmd);
         break;
     default:
-        dprintf(stderr, "handle_fileop: bad type 0x%x\n",
-                cmd->payload.request.op.fileop.type);
+        dprintf(stderr, "handle_fileop: bad type 0x%x\n", cmd->payload.request.op.fileop.type);
         error_reply(ctx, cmd->header.sequence, EOPNOTSUPP);
         break;
     }
@@ -904,7 +886,7 @@ int handle_fileop(COMMCTX * ctx, corefs_packet * cmd)
 
 int handle_xattr(COMMCTX * ctx, corefs_packet * cmd)
 {
-
+   printf("handle  xattr\n");
 #ifdef HAVE_SETXATTR
     switch(cmd->payload.request.op.xattr.type){
     case COREFS_XATTR_SETXATTR:
@@ -920,8 +902,7 @@ int handle_xattr(COMMCTX * ctx, corefs_packet * cmd)
         my_ops.handle_listxattr(ctx, cmd);
         break;
     default:
-        dprintf(stderr, "handle_xttr: received unexpected type %i.\n",
-                cmd->payload.request.op.xattr.type);
+        dprintf(stderr, "handle_xttr: received unexpected type %i.\n", cmd->payload.request.op.xattr.type);
         error_reply(ctx, cmd->header.sequence, EOPNOTSUPP);
         break;
     }
@@ -931,6 +912,7 @@ int handle_xattr(COMMCTX * ctx, corefs_packet * cmd)
 
 int check_sanity(corefs_packet * cmd)
 {
+    printf("check sanity\n");
     /* check sanity of the request */   
     if (cmd->header.magic != COREFS_MAGIC) {
         dprintf(stderr, "bad magic number.\n");
@@ -957,14 +939,12 @@ int check_sanity(corefs_packet * cmd)
 
 int handle_command(COMMCTX *ctx, corefs_packet *cmd, int packetsize)
 {
-
- 
+    printf("handle command begin\n");
     int ret = check_sanity(cmd);
     if(ret){
         error_reply(ctx, cmd->header.sequence, ret);
         return 0;
     }
-   
   
     // process request
 #ifdef DEBUG_NETWORK
@@ -974,6 +954,7 @@ int handle_command(COMMCTX *ctx, corefs_packet *cmd, int packetsize)
     //	dprintf(stderr, "-- got new request. -- \n");
     switch(cmd->payload.request.type) {
     case COREFS_REQUEST_FILEOP:
+        //printf("hanle_command %s\n",cmd->payload.request.op.fileop.path);
         handle_fileop(ctx, cmd);
         break;
     case COREFS_REQUEST_SIMPLE:
@@ -992,6 +973,7 @@ int handle_command(COMMCTX *ctx, corefs_packet *cmd, int packetsize)
 
 int handle_connection(COMMCTX* ctx)
 {
+    printf("handle_connection\n");
     char* buffer;
     int packetsize;
     corefs_packet* cmd;
@@ -1001,7 +983,6 @@ int handle_connection(COMMCTX* ctx)
     cmd=(corefs_packet*)temp_buffer;
 
     while(1) {
-
         memset(buffer,0, BUFFERSIZE);
         /* receive client request */    
         if ((packetsize = receive_packet(ctx, buffer)) <= 0) {
@@ -1101,7 +1082,6 @@ int parse_arguments(int argc, char** argv ,char * config_path)
         {0,0,0,0}
     };
   
-  
     /*  Check if upper layer has got all of its command line args */
     if(my_ops.up_parse_arguments){    
         if(my_ops.up_parse_arguments((char*)argstr, argc, argv) != PROCEED) {
@@ -1140,6 +1120,30 @@ int parse_arguments(int argc, char** argv ,char * config_path)
     return 0;
 }
 
+int hostname_to_ip(char * hostname , char* ip)
+{
+	struct hostent *he;
+	struct in_addr **addr_list;
+	int i;
+
+	if ( (he = gethostbyname( hostname ) ) == NULL)
+	{
+		// get the host info
+		herror("gethostbyname");
+		return 1;
+	}
+
+	addr_list = (struct in_addr **) he->h_addr_list;
+
+	for(i = 0; addr_list[i] != NULL; i++)
+	{
+		//Return the first one;
+		strcpy(ip , inet_ntoa(*addr_list[i]) );
+		return 0;
+	}
+	return 1;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -1155,7 +1159,6 @@ int main(int argc, char **argv)
     char *fdchar = (char*)calloc(FDLEN,1);
     init_list_head(&head);
 
-
     /* Initialize header size */
     init_sizes();
     /* Initialize function pointers */
@@ -1167,38 +1170,30 @@ int main(int argc, char **argv)
     /* Parse command line arguments */
     parse_arguments(argc, argv, NULL);
   
-  
     g_buffer=(char*)calloc(BUFFERSIZE,1);
     g_buffer2=(char*)calloc(BUFFERSIZE,1);
 
     memset(&server_addr, 0, sizeof(struct sockaddr_in));
-	printf("Inaddr : %ld\n", htonl(INADDR_ANY)); 
+	//printf("Inaddr : %ld\n", htonl(INADDR_ANY)); 
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	printf("Server addr %d\n", server_addr.sin_addr.s_addr);
+	//printf("Server addr %d\n", server_addr.sin_addr.s_addr);
     server_addr.sin_port = htons(server_port);
 	printf("Server port %d\n", server_addr.sin_port);
 
-    printf("AF_INET %d\n",AF_INET);
-    printf("SOCK_STREAM %d\n",SOCK_STREAM);
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0) {
         fprintf(stderr, "ERROR: socket creation failed: %s\n",
                 strerror(errno));
         return 1;
     }
-    else
-    {
-	printf("listenfd %d\n", listenfd);
-    }
      
     flag=1;
-    if (setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY,
-                   (char*) &flag, sizeof(int))) {
+    
+    if (setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY, (char*) &flag, sizeof(int))) {
         fprintf(stderr, "ERROR: unable to set socket options.\n");
     }
-
-    if (bind(listenfd, (struct sockaddr *)&server_addr, sizeof(server_addr))
-        < 0) {
+    
+    if (bind(listenfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
             fprintf(stderr, "ERROR: bind on control socket failed: %s\n",
                     strerror(errno));
             return 1;
@@ -1210,20 +1205,16 @@ int main(int argc, char **argv)
         daemonize();
     }
   
-
-	printf("start listening\n");
-  
+    
     if (listen(listenfd, MAXCONN) < 0) {
         fprintf(stderr, "ERROR: listen on control socket failed: %s\n",
                 strerror(errno));
         return 1;
     }
-
-  
+    
     dprintf(stderr, "waiting for connection on port %d.\n", server_port);
 
     if (fork_client == 0) {
-        printf("If\n");
         for (i=0; i<FD_SETSIZE; i++) {
             clients[i] = -1;
         }
@@ -1236,6 +1227,7 @@ int main(int argc, char **argv)
       
         corefs_packet *cmd=(corefs_packet*)buf;
       
+	char *datanode = "java.rutgers.edu";
         while(1) {
             /* copy the entire set to the temporary set select modifies
              * the set it is sent, this is why temp_set is used and
@@ -1244,15 +1236,50 @@ int main(int argc, char **argv)
         
             /*select - returns when one or more sockets are ready to be ready*/
             num_ready = select(maxfd+1, &temp_set, NULL, NULL, NULL);
-          
             /* checks to see if listenfd is ready to read (ie new
              * connection ready) */
             if (FD_ISSET(listenfd, &temp_set)) {
                 connfd = accept(listenfd, (struct sockaddr *)&peer_addr, &peer_addrlen);
+		
                 if (connfd < 0) { 
                     fprintf(stderr, "ERROR: accept failed for control socket: %s, errno[%d]\n", strerror(errno),errno);
                     break;
                 }
+		
+		//Getting Client's details
+		char host[1024];
+		char service[20];
+		getnameinfo(&peer_addr, sizeof peer_addr, host, sizeof host, service, sizeof service, 0);
+		
+		char ip[100];
+		hostname_to_ip(host, ip);
+		printf("Peer name: %s\n", host);
+		printf("Peer host: %s\n", ip);
+
+/*
+		// create Non-Blocking socket to send message
+		int socketb = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		struct sockaddr_in sendaddress;
+		int slen = sizeof(sendaddress);
+		//memcpy(&sendaddress.sin_addr.s_addr, peer_addr.sin_addr.s_addr,4);
+		if(inet_aton(ip,&sendaddress.sin_addr) == 0)
+		{
+			printf("Inet_aton failed\n");
+			break;
+		}
+		//printf("Peer address : %d\n",peer_addr.sin_addr.s_addr);
+		sendaddress.sin_family = AF_INET;
+		sendaddress.sin_port   = htons(8009);
+		printf("Send address port : %d\n",sendaddress.sin_port);
+		int ret = sendto(socketb, datanode, strlen(datanode), 0, &sendaddress, slen); 
+		if (ret == -1)
+		{
+			printf("Sendto failed\n");
+			break;
+		}
+		close(socketb);
+		printf("Sending done\n");
+*/
                 /* find the first available space in the client array,
                  * and store the new client's file decriptor there */
                 for (i=0; i<FD_SETSIZE; i++) {
@@ -1268,6 +1295,7 @@ int main(int argc, char **argv)
                     dprintf(stderr, "server: incoming connection dropped\n");
                     close(connfd);
                 } else {
+		    printf("Accepted connection\n");
                     dprintf(stderr,"accepted connection.\n");
           
                     /* setup a ctx for the new client and put it in the list */
@@ -1278,9 +1306,11 @@ int main(int argc, char **argv)
                     ((SOCK_CTX*)(temp_ctx->sock_ctx))->sock=connfd;
 
                     if(my_ops.up_new_client) {
+			printf("Up new client\n");
                         char my_dns[4096];
                         memset(my_dns,4096,0);
                         gethostname(my_dns, 4095);
+			printf("my_dns %s\n",my_dns);
                         /* TODO: get client ip in string */
                         my_ops.up_new_client(NULL,my_dns,temp_ctx);
                     }
@@ -1313,17 +1343,18 @@ int main(int argc, char **argv)
                 if ((connfd = clients[i])<0) {
                     continue;
                 }
+		printf("Check socket\n");
                 //check to see if the socket is ready to read
                 if (FD_ISSET(connfd, &temp_set)) {
                     memset(fdchar,0,FDLEN);
                     sprintf(fdchar,"%d",connfd);
-                    if (get_info_ptr(&head,&tail,
-                                     fdchar,FDLEN,(void *)&temp_ctx)<0) {
+                    if (get_info_ptr(&head,&tail, fdchar,FDLEN,(void *)&temp_ctx)<0) {
                         dprintf(stderr,"server: cannot find ctx in list. Inserted incorrectly?\n");
                         dprintf(stderr,"closing connection\n");
                         close(connfd);
                     } else {
                         /* read packet */
+  			printf("Waiting to receive packet\n");
                         packetsize = receive_packet(temp_ctx, buffer);
                         if (packetsize <= 0) {
                             //client closed connection, remove client
@@ -1344,7 +1375,9 @@ int main(int argc, char **argv)
                         }
                         else {
                             /* convert to host order */
+			    printf("Main Buf : %s\n",buffer);
                             memcpy(buf, buffer, header_size);
+			    printf("Main Buf : %s\n",buf);
                             /* Use separate buffers  */
                             decap_corefs_request(buffer + header_size, cmd); 
                             /* handle the received command */
@@ -1356,7 +1389,6 @@ int main(int argc, char **argv)
                     }
                 }
             }
-        
             temp_ctx=NULL;
             memset(buffer,0,BUFFERSIZE);
             memset(buf,0,BUFFERSIZE);

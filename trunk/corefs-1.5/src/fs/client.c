@@ -1,51 +1,5 @@
-/*
- * READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
- *
- * By downloading, copying, installing or using the software you agree
- * to this license. If you do not agree to this license, do not
- * download, install, copy or use the software.
- *
- * University of Minnesota Institute of Technology
- *
- * Computer Science and Engineering – Digital Technology Center –
- * License Agreement
- *
- * Copyright (c) 2005-2007, Regents of the University of Minnesota.
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * -Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * -Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the
- * distribution.
- *
- * -The name of the University of Minnesota may not be used to endorse
- * or promote products derived from this software without specific
- * prior written permission.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * UNIVERSITY OF MINNESOTA OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
 #include <stdio.h>
+
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -73,7 +27,6 @@
 #include "common.h"
 #include "list.h"
 
-
 #define MAXCONN 5
 //maximum length for a file path
 #define MAXPATH 200
@@ -81,6 +34,10 @@
 #define LOCALSIZE 42
 //maximum length for a server address
 #define MAXADDR 100
+
+char *server_name = NULL;
+const char *my_path = "/tmp/shyam-fuse";
+int first = 0;
 
 corefs_client_operations my_ops; /* This does not need any locking */
 int server_port = SERVER_PORT;
@@ -90,7 +47,6 @@ char *local_path;
 /* list for storing multiple servers */
 list_head head;
 list_tail *tail;
-
 
 //structure for holding server data
 //will be kept in a list
@@ -107,12 +63,13 @@ typedef struct _server_data {
     pthread_mutex_t sequence_mutex; */
 } server_data;
 
-
 int init_server_data(server_data *sd)
 {
+    printf("Init server data\n");
     sd->ctx=&(sd->g_ctx);
     sd->g_ctx.sock_ctx=&(sd->g_mctx);
     sd->g_mctx.sock=-1;
+	printf("End of Init server data\n");
     return 0;
 }
 
@@ -128,9 +85,10 @@ int delete_server_data(server_data *sd)
  * then sets up socket communication */
 int init(char *serverid, server_data **sdata)
 {
+    printf("Init function\n");
     int flag;
     struct sockaddr_in server_addr;
-    struct hostent* host=NULL;
+    struct hostent *host=NULL;
     char g_server_addr[4];
     static int sock=-1;
     int ret, insertval=0;
@@ -138,7 +96,8 @@ int init(char *serverid, server_data **sdata)
     //find out host info right away
     host=gethostbyname(serverid);
     if (host) {
-        memcpy(g_server_addr, host->h_addr, 4);
+        //strcpy(g_server_addr,(inet_ntoa(*(struct in_addr*) host->h_addr)));
+        memcpy(g_server_addr,host->h_addr, 4);
     }
     else {
         dprintf(stderr,"gethostbyname FAILED!\n");
@@ -150,7 +109,6 @@ int init(char *serverid, server_data **sdata)
         memset(serverid,0,MAXADDR);
         strncpy(serverid,host->h_name,MAXADDR);
     }
-
     server_data* sd = NULL;
     ret = get_info_ptr(&head,&tail,serverid,MAXADDR,(void *)&sd);
     if (ret < 0) {
@@ -188,8 +146,10 @@ int init(char *serverid, server_data **sdata)
 
     memcpy(&server_addr.sin_addr.s_addr, g_server_addr, 4);
     
+    //htnos converts 4444 to 23569
     server_addr.sin_port = htons(server_port);
-
+    printf("Server addr : %d\n",server_addr.sin_addr.s_addr);
+    printf("Port : %d\n",server_addr.sin_port);
     sock=socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         dprintf(stderr, "ERROR: socket creation failed: %s\n",
@@ -198,13 +158,10 @@ int init(char *serverid, server_data **sdata)
     }
     flag=1;
 
-    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-                   (char*) &flag, sizeof(int))) {
+    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*) &flag, sizeof(int))) {
         dprintf(stderr, "ERROR: unable to set socket options.\n");
     }
-
-    int rval = connect(sock, (struct sockaddr *)&server_addr,
-                       sizeof(server_addr));
+    int rval = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
     if (rval != 0) {
         dprintf(stderr, "ERROR: connect failed: %s\n", strerror(errno));
             
@@ -224,38 +181,84 @@ int init(char *serverid, server_data **sdata)
         }
         else
             ret = -1;
-        
         return ret;
     }
-        
-    sd->g_mctx.sock=sock;
+/*
+printf("Before receiving\n");
+int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+// use broadcast address
+struct sockaddr_in sendaddress;
+int slen = sizeof(sendaddress);
+sendaddress.sin_addr.s_addr = htonl(INADDR_ANY); 
+sendaddress.sin_family = AF_INET;
 
+sendaddress.sin_port = htons(8009);
+printf("Print port: %d\n",sendaddress.sin_port);
+
+// this is code to send message
+char buf1[100];
+int len = strlen(buf1);
+ret = recvfrom(socketa, buf1, len, 0,&sendaddress, &slen);
+    if (ret == -1)
+    {
+	printf("recvfrom() failed\n");
+    }
+    printf("After receive %d bytes\n", ret);
+    printf("received %s\n", buf1);
+    close(socketa);
+*/
+    /*char datanode[30];
+    if(recv(sock,datanode,30,0) == -1 )
+    {
+	printf("Error\n");
+	exit(0);
+    }
+    printf("Datanode name : %s\n",datanode);*/
+    printf("Sleep before connect in init\n");
+    sleep(10);
+    sd->g_mctx.sock=sock;
     if(my_ops.up_new_server) {
         char my_dns[4096];
         memset(my_dns,4096,0);
-    
         gethostname(my_dns, 4095);
-            
+        printf("Dns %s\n",my_dns);    
         if(my_ops.up_new_server(my_dns, serverid, sd->ctx) != PROCEED){
             shutdown(sd->g_mctx.sock, 2);
             sock = sd->g_mctx.sock = -1;
-      
             return -1;
         }
     }
-        
+    if(first == 0)
+    {
+	first = 1;
+    	server_name = (char *) malloc(strlen(serverid) + 1);
+    	strcpy(server_name,serverid);    
+    }
     //create the local directory, if it doesn't already exist
-    struct stat st;
+    /*struct stat st;
+    
     char dir_path[MAXPATH+LOCALSIZE];
+    printf("Local path %s\n",local_path);
     sprintf(dir_path, "%s/mnt/%s", local_path, serverid);
     int stret = stat(dir_path, &st);
+    
     if (stret < 0) {
         if (mkdir(dir_path, 0700)) {
             perror("Failed to create local .corefs/mnt/server directory");
             exit(1);
         }
     }
-    
+    */
+    /*
+    sprintf(dir_path, "%s/mnt/%s/tmp", local_path, serverid);
+    stret = stat(dir_path, &st);
+    if (stret < 0) {
+        if (mkdir(dir_path, 0700)) {
+            perror("Failed to create local .corefs/mnt/server directory");
+            exit(1);
+        }
+    }
+   */
     //set the server data pointer
     if (sdata) {
         *sdata = sd;
@@ -277,7 +280,6 @@ void do_destroy(void *input) {
         close(sd->g_mctx.sock);
         node=node->next;
     }
-
     return;
 }
 
@@ -288,7 +290,13 @@ void do_destroy(void *input) {
 //ret_path needs to be of length MAXPATH
 int remove_addr(const char *path, char **ret_path, char *server_addr)
 {
+    printf("Remove addr\n");
+    printf("Path : %s\n", path);
+    printf("Ret_path : %s\n", *ret_path);
+    printf("Server addr : %s\n", server_addr);
+    printf("Before i = 0\n");
     int i=0;
+    /*
     if (path == NULL) {
         *ret_path = NULL;
         return 0;
@@ -324,8 +332,22 @@ int remove_addr(const char *path, char **ret_path, char *server_addr)
             //It was an 'ls mnt/server' - add a '/' to send to server
             *ret_path[0]='/';
         }
+    }*/
+    if(server_addr != NULL)
+    {
+    	//strcpy(server_addr,"cpp.rutgers.edu");
+    	strcpy(server_addr,server_name);
     }
-    
+    printf("Remove addr end\n");
+    //strcpy(*ret_path,path);
+    if( path != NULL )
+    {
+    strcpy(*ret_path,my_path);
+    strcat(*ret_path,path);
+    }
+    printf("Path : %s\n", path);
+    printf("Ret_path : %s\n", *ret_path);
+    printf("Server addr : %s\n", server_addr);
     return i-1;
 }
 
@@ -336,7 +358,8 @@ int check_setup(char *s_addr, server_data **sdata)
 {
     int ret;
     server_data *sd=NULL;
-
+    printf("Check setup\n");
+    //printf("head : %s\n",head.server_addr);
     ret = get_info_ptr(&head,&tail,s_addr,MAXADDR,(void *) &sd);
     if (ret < 0) {
         if (&head == NULL || s_addr == NULL) {
@@ -345,6 +368,9 @@ int check_setup(char *s_addr, server_data **sdata)
         }
         else {
             //server could not be found in the list, set it up
+    		printf("s_addr : %s\n",s_addr);
+    		printf("sdata : %s\n",sdata);
+		printf("going to call init\n");
             return init(s_addr, sdata);
         }
     }
@@ -366,13 +392,14 @@ int check_setup(char *s_addr, server_data **sdata)
 int do_read_local(const char* path, char* buf, size_t size, off_t offset,
                   struct fuse_file_info* fi)
 {
+    printf("do read local\n");  
     return -EACCES;
 }
 
 int do_read(const char* path, char* buf, size_t size, off_t offset,
             struct fuse_file_info* fi)
 {
-
+    printf("do read\n");
     char buffer[BUFFERSIZE];
     corefs_packet req_packet;
     memset(&req_packet, 0, sizeof(req_packet));
@@ -382,8 +409,7 @@ int do_read(const char* path, char* buf, size_t size, off_t offset,
     
     /* Get user info from the upper layer */
     if(my_ops.up_get_user_info)
-        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids),
-                                path, NULL);
+        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids), path, NULL);
     
     char r_path_[MAXPATH];
     char s_addr[MAXADDR];
@@ -394,22 +420,21 @@ int do_read(const char* path, char* buf, size_t size, off_t offset,
         //ie this is for the root directory
         return do_read_local(path, buf, size, offset, fi);
     }
-
+	printf("do read\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
     
     memset(buffer, 0, BUFFERSIZE);
     /* Prepare request */
-    packet_size = build_fileop(&req_packet, COREFS_REQUEST_READ, offset,
-                               size, r_path);
+    packet_size = build_fileop(&req_packet, COREFS_REQUEST_READ, offset, size, r_path);
 
     /* Encapsualte the request */
     ret = encap_corefs_header(buffer, &req_packet);
     encap_corefs_request(buffer + ret, &req_packet);
 
 #ifdef DEBUG
-    dprintf(stderr, "READ: %s : %llu : %u\n", path, offset, size);
+    (dprintf(stderr, "READ: %s : %llu : %u\n", path, offset, size);
 #endif
 #ifdef DEBUG_NETWORK
     fprintf(stderr,"read request\n");
@@ -430,8 +455,7 @@ int do_read(const char* path, char* buf, size_t size, off_t offset,
     /* Estimate the returned data size */
     corefs_packet * reply = (corefs_packet*)buffer;
   
-    ret = reply->header.payload_size -
-        RESPONSE_BASE_SIZE(reply->payload.response);
+    ret = reply->header.payload_size - RESPONSE_BASE_SIZE(reply->payload.response);
     memcpy(buf, reply->payload.response.rop.raw, ret);
   
     return ret;
@@ -446,7 +470,7 @@ int do_write_local(const char* path, const char* buf, size_t size,
 int do_write(const char* path, const char* buf, size_t size, off_t offset,
              struct fuse_file_info* fi)
 {
-
+    printf("do write\n");
     char buffer[BUFFERSIZE];
     memset(buffer, 0, BUFFERSIZE);
     corefs_packet req_packet;
@@ -457,8 +481,7 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
 
     /* Get user info from the upper layer */
     if(my_ops.up_get_user_info)
-        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids),
-                                path, NULL);
+        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids), path, NULL);
     
     char r_path_[MAXPATH];
     char s_addr[MAXADDR];
@@ -469,16 +492,14 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
         //ie this is for the root directory
         return do_write_local(path, buf, size, offset, fi);
     }
-
+	printf("do_write\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
 
-
     /* Send the write command first */
     /* Prepare request */
-    packet_size = build_fileop(&req_packet, COREFS_REQUEST_WRITE, offset,
-                               size, r_path);
+    packet_size = build_fileop(&req_packet, COREFS_REQUEST_WRITE, offset, size, r_path);
 
     /* Encapsualte the request */
     ret = encap_corefs_header(buffer, &req_packet);
@@ -508,17 +529,16 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
         return -EIO;
     }
     memset(buffer, 0, BUFFERSIZE);
-    if ((ret=client_receive_specified(sd->ctx, buffer, COREFS_RESPONSE_STATUS))
-        < 0) {
+    if ((ret=client_receive_specified(sd->ctx, buffer, COREFS_RESPONSE_STATUS)) < 0) {
         dprintf(stderr, "write returned error.\n");
         return ret;
     }
     return size;
 }
 
-int do_readdir_local(const char* path, void* buf, fuse_fill_dir_t filler,
-                       off_t offset, struct fuse_file_info *fi)
+int do_readdir_local(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
+	printf("do readdir local\n");
     DIR* d;
     struct dirent* de;
     int count=0;
@@ -528,6 +548,7 @@ int do_readdir_local(const char* path, void* buf, fuse_fill_dir_t filler,
 #endif
     char full_path[MAXPATH+LOCALSIZE];
     sprintf(full_path, "%s/mnt%s", local_path, path);
+    printf("Full path : %s\n",full_path);
     d=opendir(full_path);
     if (!d) {
         dprintf(stderr, "opendir failed.\n");
@@ -577,9 +598,9 @@ int do_readdir_local(const char* path, void* buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-int do_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
-               off_t offset, struct fuse_file_info *fi)
+int do_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
+	printf("do readdir\n");
     char buffer[BUFFERSIZE];
     unsigned int packet_size;
     int ret;
@@ -591,8 +612,7 @@ int do_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
   
     /* Get user info from the upper layer */
     if(my_ops.up_get_user_info)
-        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids),
-                                path, NULL);
+        my_ops.up_get_user_info(&(req_packet.payload.request.user_ids), path, NULL);
   
     char r_path_[MAXPATH];
     char s_addr[MAXADDR];
@@ -603,7 +623,6 @@ int do_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         //ie this is for the root directory
         return do_readdir_local(path, buf, filler, offset, fi);
     }
-
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -674,6 +693,8 @@ int do_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 int do_getattr_local(const char* path, struct stat *stbuf)
 {
+    printf("do_getattr_local function\n");
+    printf("path : %s\n",path);
     struct stat st;
     int ret;
 #ifdef DEBUG
@@ -681,6 +702,7 @@ int do_getattr_local(const char* path, struct stat *stbuf)
 #endif
     char full_path[MAXPATH+LOCALSIZE];
     sprintf(full_path, "%s/mnt%s", local_path, path);
+    printf("Full path : %s\n",full_path);
     ret=lstat(full_path, &st);
     if (ret < 0) {
         dprintf(stderr, "stat failed.\n");
@@ -695,12 +717,14 @@ int do_getattr_local(const char* path, struct stat *stbuf)
     stbuf->st_mtime=st.st_mtime;
     stbuf->st_atime=st.st_mtime;
     stbuf->st_ctime=st.st_mtime;
-
+    printf("End of do_getattr_local function\n");
     return 0;
 }
 
 int do_getattr(const char* path, struct stat *stbuf)
 {
+    printf("do_getattr function\n");
+    printf("path : %s\n",path);
     server_data *sd=NULL;
     int ret;
     int packet_size = 0;
@@ -718,8 +742,10 @@ int do_getattr(const char* path, struct stat *stbuf)
     if (r_path[0]=='\0') {
         //there was no path other than the first '/'
         //ie this is for the root directory
+        printf("return do_getattr_local\n");
         return do_getattr_local(path,stbuf);
     }
+    printf("do_getattr\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -767,9 +793,8 @@ int do_getattr(const char* path, struct stat *stbuf)
     stbuf->st_atime = reply->payload.response.rop.attr.atime;
     stbuf->st_ctime = reply->payload.response.rop.attr.ctime;
     stbuf->st_nlink = reply->payload.response.rop.attr.nlinks;
-  
+    printf("End of do getattr function\n");
     return 0;
-	
 }
 
 #ifdef HAVE_SETXATTR
@@ -779,6 +804,7 @@ int do_listxattr_local(const char *path, char *list, size_t size) {
 }
 /** List extended attributes */
 int do_listxattr (const char * path, char * list, size_t size){
+    printf("do_listxattr\n");
     char buffer[BUFFERSIZE];
     memset(buffer, 0, BUFFERSIZE);
     corefs_packet* packet = (corefs_packet*)buffer;
@@ -795,7 +821,7 @@ int do_listxattr (const char * path, char * list, size_t size){
         //ie this is for the root directory
         return do_listxattr_local(path, list, size);
     }
-    
+    printf("do_listxattr\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -851,7 +877,6 @@ int do_listxattr (const char * path, char * list, size_t size){
     memcpy(list, reply->payload.response.rop.raw, ret);
   
     return ret;
-
 }
 
 int do_removexattr_local(const char *path, const char *name) {
@@ -860,6 +885,7 @@ int do_removexattr_local(const char *path, const char *name) {
 
 /** Remove extended attributes */
 int do_removexattr (const char * path, const char *name){
+    printf("do_removexattr\n");
     char buffer[BUFFERSIZE];
     memset(buffer, 0, BUFFERSIZE);
     corefs_packet* packet = (corefs_packet*)buffer;
@@ -876,6 +902,7 @@ int do_removexattr (const char * path, const char *name){
         //ie this is for the root directory
         return do_removexattr_local(path, name);
     }
+    printf("do_removexattr\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -925,6 +952,7 @@ int do_getxattr_local(const char *path, const char *name,
 
 int do_getxattr(const char *path, const char *name, char *value, size_t size)
 {
+    printf("do_getxattr\n");
     char buffer[BUFFERSIZE];
     memset(buffer, 0, BUFFERSIZE);
     corefs_packet* packet = (corefs_packet*)buffer;
@@ -941,7 +969,7 @@ int do_getxattr(const char *path, const char *name, char *value, size_t size)
         //ie this is for the root directory
         return do_getxattr_local(path, name, value, size);
     }
-    
+    printf("do_getxattr\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -1006,6 +1034,7 @@ int do_setxattr_local(const char *path, const char *name, const char *value,
 int do_setxattr(const char *path, const char *name, const char *value,
                 size_t size, int flags)
 {
+    printf("do_setxattr\n");
     char buffer[BUFFERSIZE];
     char request_buf[BUFFERSIZE];
     memset(buffer, 0, BUFFERSIZE);
@@ -1025,7 +1054,7 @@ int do_setxattr(const char *path, const char *name, const char *value,
         //ie this is for the root directory
         return do_setxattr_local(path, name, value, size, flags);
     }
-
+    printf("do_setxattr\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -1087,6 +1116,7 @@ int simple_op_local(unsigned int type, const char* path1, off_t offset,
 {
     if (type == COREFS_SIMPLE_RMDIR) {
         server_data *sd=NULL;
+        printf("simeple_op_local\n");
         int sdret = check_setup(s_addr, &sd);
         if (sdret == -EHOSTUNREACH) return sdret;
         if (sdret < 0) return -EIO;
@@ -1105,6 +1135,7 @@ int simple_op_local(unsigned int type, const char* path1, off_t offset,
         shutdown(sd->g_mctx.sock, SHUT_RDWR);
         close(sd->g_mctx.sock);
         delete_server_data(sd);
+	printf("Simple op local\n");
         remove_info_ptr(&head, &tail, (void *)sd);
         return ret;
     }
@@ -1118,6 +1149,7 @@ int simple_op_local(unsigned int type, const char* path1, off_t offset,
 int simple_op(unsigned int type, const char* path1, off_t offset,
               mode_t mode1, const char *opt_path)
 {
+    printf("Simple op\n");
     unsigned int packet_size;
     int ret;
   
@@ -1130,11 +1162,13 @@ int simple_op(unsigned int type, const char* path1, off_t offset,
     char *r_path1 = &r_path_[0];
     char r_opt_path_[MAXPATH];
     char *r_opt_path = &r_opt_path_[0];
-
+	printf("opt path :%s\n", opt_path);
+	printf("path 1 :%s\n", path1);
     if (type == COREFS_SIMPLE_SYMLINK) {
         remove_addr(opt_path, &r_opt_path, s_addr);
         strncpy(r_path1, path1, MAXPATH);
     }
+	printf("path 1 :%s\n", path1);
     remove_addr(path1, &r_path1, s_addr);
     remove_addr(opt_path, &r_opt_path, NULL);
     
@@ -1145,7 +1179,7 @@ int simple_op(unsigned int type, const char* path1, off_t offset,
         //and we will take that to be local (rmdir / not good anyways:P)
         return simple_op_local(type, path1, offset, mode1, opt_path, s_addr);
     }
-
+	printf("simple_op\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -1184,8 +1218,11 @@ int do_access(const char* path, int mode){
 #ifdef DEBUG
     dprintf(stderr, "ACCESS: path[%s] :  mode[%d]\n", path,mode);
 #endif
-  
+    printf("Do access\n");
+    printf("Path : %s\n",path);
     int ret = simple_op(COREFS_SIMPLE_ACCESS, path, 0, mode, NULL);
+    printf("Ret : %d\n",ret);
+    printf("Path : %s\n",path);
     return ret;
 }
 
@@ -1247,6 +1284,7 @@ int do_link(const char* from, const char* to)
 int do_mkdir(const char* path, mode_t mode)
 {
     int ret;
+    printf("do_mkdir\n");
     dprintf(stderr, "attempting to mkdir %s with perms %x\n", path, mode);
     ret = simple_op(COREFS_SIMPLE_MKDIR, path, 0, mode, NULL);
     return ret;
@@ -1267,6 +1305,7 @@ int do_readlink_local(const char* path, char* buf, size_t size)
 
 int do_readlink(const char* path, char* buf, size_t size)
 {
+    printf("do_readlink\n");
     int ret;
     unsigned int packet_size;
     char buffer[BUFFERSIZE];
@@ -1283,6 +1322,7 @@ int do_readlink(const char* path, char* buf, size_t size)
         //ie this is for the root directory
         return do_readlink_local(path, buf, size);
     }
+    printf("do_readlink\n");
     ret = check_setup(s_addr, &sd);
     if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
     if (ret < 0) return -EIO;
@@ -1456,10 +1496,10 @@ int parse_arguments(int argc, char** argv,char * config_path)
         case 'S': {
             char server_addr[MAXADDR];
             strncpy(server_addr, optarg, MAXADDR);
+	    printf("Parse Arguments, check setup\n");
             int ret = check_setup(server_addr, NULL);
             if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
             if (ret < 0) return -EIO;
-            
             break;
         }
         case 'P': 
@@ -1488,12 +1528,13 @@ int parse_arguments(int argc, char** argv,char * config_path)
             break;
         }
     }
+    //printf("Optind %d\n",optind);
+    //printf("argc %d\n",argc);
     while (optind < argc) {
         fprintf(stderr, "non-option element: %s\n",argv[optind]);
         add_fuse_arg(argv[optind]);
         optind++;
     }
-
     fprintf(stderr, "arguments for FUSE: ");
     for (i=0; i<fuse_argc; i++) {
         fprintf(stderr, "%s ", fuse_argv[i]);
@@ -1501,8 +1542,6 @@ int parse_arguments(int argc, char** argv,char * config_path)
     fprintf(stderr, "\n");
     return 0;
 }
-
-
 
 int main(int argc, char *argv[])
 {
@@ -1548,12 +1587,14 @@ int main(int argc, char *argv[])
     /* set the local path to $HOME/.corefs */
     local_path = calloc(LOCALSIZE,1);
     sprintf(local_path, "%s/.corefs",getenv("HOME"));
+//	printf("local path : %s\n",local_path);
     
     /* See if the local path exists and if there is a mnt directory in it.
        Create, if there isn't  */
     struct stat st;
     char dir_path[MAXPATH+LOCALSIZE];
     int stret = stat(local_path, &st);
+    
     if (stret < 0) {
         if (mkdir(local_path, 0700)) {
             perror("Failed to create local .corefs directory");
@@ -1563,14 +1604,15 @@ int main(int argc, char *argv[])
     memset(dir_path, 0, MAXPATH+LOCALSIZE);
     sprintf(dir_path, "%s/mnt", local_path);
     stret = stat(dir_path, &st);
+    
     if (stret < 0) {
         if (mkdir(dir_path, 0700)) {
             perror("Failed to create local .corefs/mnt directory");
             exit(1);
         }
     }
-
     init_list_head(&head);
+    sleep(1);
     
     /* Parse the command line args */
     parse_arguments(argc, argv, config_path);
@@ -1580,7 +1622,4 @@ int main(int argc, char *argv[])
         return -1;
     }
     return 0;
-  
 }
-
-
