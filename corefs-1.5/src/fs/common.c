@@ -1,50 +1,3 @@
-/*
- * READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
- *
- * By downloading, copying, installing or using the software you agree
- * to this license. If you do not agree to this license, do not
- * download, install, copy or use the software.
- *
- * University of Minnesota Institute of Technology
- *
- * Computer Science and Engineering – Digital Technology Center –
- * License Agreement
- *
- * Copyright (c) 2005-2007, Regents of the University of Minnesota.
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * -Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * -Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the
- * distribution.
- *
- * -The name of the University of Minnesota may not be used to endorse
- * or promote products derived from this software without specific
- * prior written permission.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * UNIVERSITY OF MINNESOTA OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -57,11 +10,9 @@
 #include "common.h"
 #include "protocol.h"
 
-
 /* Variables to hold size of strucutres. These should be initialized
  * only once and should not need any locking. */
  size_t header_size = 0;
-
 
 void init_sizes(void){
   corefs_header header;
@@ -102,7 +53,6 @@ unsigned int encap_corefs_header(char * buf, corefs_packet * pkt){
   // memcpy((buf + pos), &ui, sizeof(ui));
   pos +=  sizeof(ui);
 
-
   return pos;
 }
 
@@ -129,7 +79,6 @@ unsigned int decap_corefs_header(char * buf, corefs_packet * pkt){
 
   header->payload_size = ntohl(*(unsigned int *)(buf + pos));
   pos += sizeof(unsigned int);
-
 
   return pos;
 }
@@ -389,8 +338,6 @@ unsigned int decap_corefs_request(char * buf, corefs_packet * pkt){
   return pos;
 }
 
-
-
 /* encodes the response structure and copies it into the location
  * pointer by buf. Make sure that buf points to the location where you
  * want the response to be copied and not the the location where the
@@ -467,8 +414,6 @@ unsigned int encap_corefs_response(char * buf, corefs_packet * pkt){
   return pos;
 }
 
-
-
 /* decodes the response structure and copies it into the location
  * pointer by pkt. Make sure that buf points to the location from
  * where you want the response to be copied and not the the location
@@ -524,8 +469,6 @@ unsigned int decap_corefs_response(char * buf, corefs_packet * pkt){
   }
   return pos;
 }
-
-
 
 
 /* Helper functions to initialize all the various types of
@@ -657,7 +600,7 @@ unsigned int build_status(corefs_packet* packet, unsigned int status, unsigned i
 {
 	build_header(packet, COREFS_RESPONSE);
 	packet->header.payload_size=SIZEOF_STATUS(packet->payload.response.rop.status) + RESPONSE_BASE_SIZE(packet->payload.response);
-  packet->payload.response.type = type;
+  	packet->payload.response.type = type;
 	packet->payload.response.rop.status.bits=status;
 	return header_size + SIZEOF_STATUS(packet->payload.response.rop.status) + RESPONSE_BASE_SIZE(packet->payload.response);
 }
@@ -665,7 +608,6 @@ unsigned int build_status(corefs_packet* packet, unsigned int status, unsigned i
 /*  loops until all of the data is received or until IO error.  If */
 /*  successful, returns the requested write size otherwise returns -1 */
 /*  in case of IO error */
-
 int socket_read(int sock, char* buffer, size_t size)
 {
     int read=0;
@@ -686,6 +628,7 @@ int socket_read(int sock, char* buffer, size_t size)
             read+=ret;
         }
     }
+    //printf("Socket read %s\n",buffer);
     return read;
 }
 
@@ -693,14 +636,13 @@ int socket_read(int sock, char* buffer, size_t size)
  /* loops until all of the data is sent or until IO error.  If
   * successful, returns the requested write size otherwise returns -1
   * in case of IO error */
-   
 int socket_write(int sock, char* buffer, size_t size)
 {
 	int written=0;
 	int ret;
 
 	//dprintf(stderr, "in socket_write(). [sock=%i]\n",sock);
-
+	//printf("socket write : %s\n", buffer);
 	while (written < size) {
 		if ((ret=send(sock, buffer+written, (size_t)size-written, 0)) <= 0) {
 			return -1;
@@ -717,7 +659,7 @@ int phy_send(COMMCTX* ctx, char* buffer, int size)
 {
 	SOCK_CTX* mctx;
 	mctx=(SOCK_CTX*)ctx->sock_ctx;
-
+	//printf("Phy send %s\n",buffer);
 	return socket_write(mctx->sock, buffer, size);
 }
 
@@ -779,15 +721,12 @@ int server_receive_specified(COMMCTX* ctx, char* buffer, unsigned int type)
   return ret;
 }
 
-
-
 /* Called by the client to fetch response of the specified type. This
  * function will decapsulate and copy the received packet in
  * buffer. If client is waiting for status, then returns the status on
  * success. Otherwise returns payload size on success or returns
  * -errno on failure. If the received packet is not of the specified
  * type -EIO is returned.*/
-
 int client_receive_specified(COMMCTX* ctx, char* buffer, unsigned int type)
 {
     int ret;
@@ -811,7 +750,6 @@ int client_receive_specified(COMMCTX* ctx, char* buffer, unsigned int type)
   
 
     /* decap the received message */
-    
     if(packet->header.type == COREFS_RESPONSE)
         decap_corefs_response(resp_buf + header_size, packet);
     else{
@@ -846,18 +784,18 @@ int client_receive_specified(COMMCTX* ctx, char* buffer, unsigned int type)
 
 int receive_packet(COMMCTX* ctx, char* buffer)
 {
+	//printf("Receive packet %s\n",buffer);
 	//dprintf(stderr, "in receive_packet.\n");
 	return ctx->receive(ctx, buffer, BUFFERSIZE);
 }
 
 int send_packet(COMMCTX* ctx, char* buffer, size_t size)
 {
+	//printf("Send packet %s\n",buffer);
 	int ret = ctx->send(ctx, buffer, size);
   return ret;
   
 }
-
-
 
 
 /* Print functions for debugging. These will print the contents of the
@@ -919,4 +857,3 @@ void print_packet(corefs_packet pkt){
   if(pkt.header.type == COREFS_REQUEST) print_request(pkt);
   if(pkt.header.type == COREFS_RESPONSE) print_response(pkt);
 }
-

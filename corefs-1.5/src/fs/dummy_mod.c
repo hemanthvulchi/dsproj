@@ -1,54 +1,6 @@
-/*
- * READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
- *
- * By downloading, copying, installing or using the software you agree
- * to this license. If you do not agree to this license, do not
- * download, install, copy or use the software.
- *
- * University of Minnesota Institute of Technology
- *
- * Computer Science and Engineering – Digital Technology Center –
- * License Agreement
- *
- * Copyright (c) 2005-2007, Regents of the University of Minnesota.
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * -Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * -Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the
- * distribution.
- *
- * -The name of the University of Minnesota may not be used to endorse
- * or promote products derived from this software without specific
- * prior written permission.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * UNIVERSITY OF MINNESOTA OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
 #include <string.h>
 #include "common.h"
 //#include <fuse.h>
-
 
 /* corefs_server_operations myop; */
 /* int temp_read(COMMCTX* ctx, corefs_packet* cmd){ */
@@ -73,19 +25,22 @@ int my_check_access(COMMCTX * ctx, const user_info * u, int * status, const char
 
 void my_get_user_info(user_info * u, const char * path, const char * opt_path)
 {
+  printf("Get user infor %s\n",path);
+  printf("Get user info %s\n",opt_path);
   u->uid = fuse_get_context()->uid;
   u->gid = fuse_get_context()->gid;
   u->num_sgids = 0;
 }
 
 void my_goodbye(COMMCTX* ctx) {
+  printf("Goodbye\n");
   return;
 }
 
 int my_receive(COMMCTX* ctx, char* buf, int len) {
   /* note "len" here is the buffer size.  we want one packet of any
    * length up to "len". then return the actual size received. */
-  
+  //printf("Receive buf %s\n",buf);
   corefs_header *header=(corefs_header*)buf;
   int psize;
   
@@ -111,25 +66,28 @@ int my_receive(COMMCTX* ctx, char* buf, int len) {
 }
 
 int my_send(COMMCTX* ctx, char* buf, int len) {
+	//printf("Buf : %s\n",buf);
 	return phy_send(ctx, buf, len);
 }
 
 int setup(COMMCTX* ctx) {
-  
   ctx->receive = my_receive;
   ctx->send = my_send;
   return PROCEED;
 }
 
 int server_hello(char * client, char * server, COMMCTX * ctx) { 
-  
+  printf("Server hello\n");
+  printf("Client %s\n",client);
+  printf("Server %s\n",server);
   return setup(ctx); 
 }
 
 int client_hello(char * client, char * server, COMMCTX * ctx){
-  
+  printf("Client hello\n");
+  printf("Client %s\n",client);
+  printf("Server %s\n",server);
   return setup(ctx);
-  
 }
 
 
@@ -207,10 +165,7 @@ int up_client_init(corefs_client_operations * op){
   op->up_parse_arguments = my_parse_arguments;
   op->up_get_user_info = my_get_user_info;
   return PROCEED;
-  
 }
-
-
 
 int up_server_init(corefs_server_operations * op){
   op->up_new_client = server_hello;
@@ -227,5 +182,4 @@ int up_server_init(corefs_server_operations * op){
   op->up_parse_arguments = my_parse_arguments;
   op->up_check_access = my_check_access;
   return PROCEED;
-  
 }

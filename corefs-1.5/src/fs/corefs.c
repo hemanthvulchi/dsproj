@@ -1,50 +1,3 @@
-/*
- * READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
- *
- * By downloading, copying, installing or using the software you agree
- * to this license. If you do not agree to this license, do not
- * download, install, copy or use the software.
- *
- * University of Minnesota Institute of Technology
- *
- * Computer Science and Engineering – Digital Technology Center –
- * License Agreement
- *
- * Copyright (c) 2005-2007, Regents of the University of Minnesota.
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * -Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * -Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the
- * distribution.
- *
- * -The name of the University of Minnesota may not be used to endorse
- * or promote products derived from this software without specific
- * prior written permission.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * UNIVERSITY OF MINNESOTA OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
 #ifdef linux
 /* For pread()/pwrite() */
 #define _XOPEN_SOURCE 500
@@ -84,7 +37,6 @@ corefs_client_operations mop;
 void attr_cache_init()
 {
     int ii;
-
     attr_cache_last_stored=0;
     attr_cache_initialized=1;
 
@@ -92,7 +44,6 @@ void attr_cache_init()
 	attr_cache[ii].valid=0;
     }
 }
-
 
 // returns 1 on successful lookup.
 // 0 if not found.
@@ -163,7 +114,6 @@ typedef struct _corefs_settings
     char spoof_gids;
     char spoof_perms;
     int spoof_permbits;
-
 } corefs_settings;
 
 corefs_settings g_ms;
@@ -184,13 +134,20 @@ void init_settings(corefs_settings* ms)
 static int corefs_getattr(const char *path, struct stat *stbuf)
 {
     int res;
-
+	printf("Coregs getattr, path :%s\n",path);
+	//char *my_path = malloc(100);
+	//strcpy(my_path,"/cpp.rutgers.edu");
+	//strcat(my_path,path);
+	//printf("my path : %s\n",my_path);
     // if we're not caching attributes or cache fails do the syscall.
     if ((! g_msp->cache_attr) || (! attr_cache_lookup(path, stbuf))) {
+    //if ((! g_msp->cache_attr) || (! attr_cache_lookup(my_path, stbuf))) {
       res = mop.getattr(path, stbuf);
+      //res = mop.getattr(my_path, stbuf);
       if(res < 0)
         return res;
       if (g_msp->cache_attr) attr_cache_store(path, stbuf);
+      //if (g_msp->cache_attr) attr_cache_store(my_path, stbuf);
     }
 
     if (g_msp->spoof_uids) stbuf->st_uid=getuid();
@@ -234,14 +191,12 @@ void client_op_init(corefs_client_operations *op){
  #endif   
 
     /* Change the getattr pointer */
+    printf("Client op init\n");
     if (op->getattr)  op->getattr = corefs_getattr;
-  
-  
 }
 
 int corefs_main(int argc, char *argv[], const corefs_client_operations *op)
 {
-
   // set all unused functions to null.
   memset(&corefs_oper, 0, sizeof(corefs_oper));
     
