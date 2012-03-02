@@ -26,21 +26,12 @@ static int my_getattr(const char *path, struct stat *stbuf)
 {
 	printf("I am in getattr\n");
 	printf("Path : %s\n", path);
-	printf("st buf mode	: %d\n", stbuf->st_mode);
-	printf("st buf ino 	: %d\n", stbuf->st_ino);
-	printf("st buf dev 	: %d\n", stbuf->st_dev);
-	printf("st buf rdev	: %d\n", stbuf->st_rdev);
-	printf("st buf nlink	: %d\n", stbuf->st_nlink);
-	printf("st buf uid	: %d\n", stbuf->st_uid);
-	printf("st buf gid	: %d\n", stbuf->st_gid);
-	printf("st buf size	: %d\n", stbuf->st_size);
-	printf("st buf atime	: %d\n", stbuf->st_atime);
-	printf("st buf mtime	: %d\n", stbuf->st_mtime);
-	printf("st buf ctime	: %d\n", stbuf->st_ctime);
-	printf("st buf blksize	: %d\n", stbuf->st_blksize);
-	printf("st buf blocks	: %d\n", stbuf->st_blocks);
 	int res;
 	pthread_t recvcmd_thread;
+
+	char my_path[100];
+	strcpy(my_path,"/tmp/shyam-fuse");
+	strcat(my_path,path);
 
 	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
 	strcpy(COMMAND_NAME, GETATTR);
@@ -52,7 +43,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
                 exit(1);
         }
 
-	if (sendcommand(namenode, path, GETATTR) == -1)
+	if (sendcommand(namenode, my_path, GETATTR) == -1)
 	{
 		pthread_kill(recvcmd_thread,0);
 		free(COMMAND_NAME);
@@ -66,10 +57,36 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	//printf("stbuf uid : %d\n", st_getattr->st_uid);
 	//now copy stuff from st_getattr to stbuf
 	memset(stbuf, 0, sizeof(struct stat));
-
+	stbuf->st_mode	= st_getattr->st_mode;
+        stbuf->st_ino	= st_getattr->st_ino;
+        stbuf->st_dev	= st_getattr->st_dev;
+        stbuf->st_rdev	= st_getattr->st_rdev;
+        stbuf->st_nlink	= st_getattr->st_nlink;
+        stbuf->st_uid	= st_getattr->st_uid;
+        stbuf->st_gid	= st_getattr->st_gid;
+        stbuf->st_size	= st_getattr->st_size;
+        stbuf->st_atime = st_getattr->st_atime;
+        stbuf->st_mtime	= st_getattr->st_mtime;
+        stbuf->st_ctime = st_getattr->st_ctime;
+        stbuf->st_blksize = st_getattr->st_blksize;
+        stbuf->st_blocks = st_getattr->st_blocks;
 	free(st_getattr);
 	if (res == -1)
 		return -errno;
+
+	printf("st buf mode     : %d\n", stbuf->st_mode);
+        printf("st buf ino      : %d\n", stbuf->st_ino);
+        printf("st buf dev      : %d\n", stbuf->st_dev);
+        printf("st buf rdev     : %d\n", stbuf->st_rdev);
+        printf("st buf nlink    : %d\n", stbuf->st_nlink);
+        printf("st buf uid      : %d\n", stbuf->st_uid);
+        printf("st buf gid      : %d\n", stbuf->st_gid);
+        printf("st buf size     : %d\n", stbuf->st_size);
+        printf("st buf atime    : %d\n", stbuf->st_atime);
+        printf("st buf mtime    : %d\n", stbuf->st_mtime);
+        printf("st buf ctime    : %d\n", stbuf->st_ctime);
+        printf("st buf blksize  : %d\n", stbuf->st_blksize);
+        printf("st buf blocks   : %d\n", stbuf->st_blocks);
 
 	printf("End of getattr\n");
 	return 0;
@@ -121,6 +138,9 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
 	printf("I am in readdir\n");
+	char my_path[100];
+        strcpy(my_path,"/tmp/shyam-fuse");
+        strcat(my_path,path);
 
 	// I have to send the path from here to the namenode..
 	// Get back the list of files..
@@ -135,7 +155,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 free(COMMAND_NAME);
                 exit(1);
         }
-	if (sendcommand(namenode, path, READDIR) == -1)
+	if (sendcommand(namenode, my_path, READDIR) == -1)
         {
 		printf("Send command failed\n");
                 pthread_kill(recvcmd_thread,0);
