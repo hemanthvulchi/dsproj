@@ -26,7 +26,7 @@ char *namenode = NULL;
 
 static int my_getattr(const char *path, struct stat *stbuf)
 {
-	printf("I am in getattr\n");
+	printf("\n\nI am in getattr\n\n");
 	printf("Path : %s\n", path);
 	int res;
 	pthread_t recvcmd_thread;
@@ -36,6 +36,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	strcpy(my_path,tmp_path);
 	strcat(my_path,path);
 
+	printf("My Path : %s\n", my_path);
 	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
 	strcpy(COMMAND_NAME, GETATTR);
 	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
@@ -60,7 +61,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	//printf("stbuf uid : %d\n", st_getattr->st_uid);
 	//now copy stuff from st_getattr to stbuf
 	memset(stbuf, 0, sizeof(struct stat));
-	stbuf->st_mode	= st_getattr->st_mode;
+	/*stbuf->st_mode	= st_getattr->st_mode;
         stbuf->st_ino	= st_getattr->st_ino;
         stbuf->st_dev	= st_getattr->st_dev;
         stbuf->st_rdev	= st_getattr->st_rdev;
@@ -73,10 +74,55 @@ static int my_getattr(const char *path, struct stat *stbuf)
         stbuf->st_ctime = st_getattr->st_ctime;
         stbuf->st_blksize = st_getattr->st_blksize;
         stbuf->st_blocks = st_getattr->st_blocks;
-	free(st_getattr);
+	free(st_getattr);*/
+
+	char *resv = strtok(getattr_buf,",");
+	res = atoi(resv);
 	if (res == -1)
 		return -errno;
 
+	char *tmp;
+	tmp = strtok(NULL,",");
+	stbuf->st_mode = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_ino = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_dev = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_rdev = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_nlink = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_uid = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_gid = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_size = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_atime = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_mtime = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_ctime = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_blksize = atoi(tmp);
+
+	tmp = strtok(NULL,",");
+	stbuf->st_blocks = atoi(tmp);
+	
+
+	
 	printf("st buf mode     : %d\n", stbuf->st_mode);
         printf("st buf ino      : %d\n", stbuf->st_ino);
         printf("st buf dev      : %d\n", stbuf->st_dev);
@@ -90,7 +136,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
         printf("st buf ctime    : %d\n", stbuf->st_ctime);
         printf("st buf blksize  : %d\n", stbuf->st_blksize);
         printf("st buf blocks   : %d\n", stbuf->st_blocks);
-
+	
 	printf("End of getattr\n");
 	return 0;
 }
@@ -146,7 +192,7 @@ static int xmp_access(const char *path, int mask)
 
 static int xmp_readlink(const char *path, char *buf, size_t size)
 {
-	printf("I am in readlink\n");
+	printf("\n\nI am in readlink\n\n");
 	int res;
 
 	res = readlink(path, buf, size - 1);
@@ -160,7 +206,7 @@ static int xmp_readlink(const char *path, char *buf, size_t size)
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
-	printf("I am in readdir\n");
+	printf("\n\nI am in readdir\n");
 	char my_path[100];
         //strcpy(my_path,"/tmp/shyam-fuse");
         strcpy(my_path,tmp_path);
@@ -213,19 +259,24 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-	printf("I am in xmp_mknod\n");
+	printf("\n\nI am in xmp_mknod\n\n");
 	int res;
+
+	char my_path[100];
+        //strcpy(my_path,"/tmp/shyam-fuse");
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
 	   is more portable */
 	if (S_ISREG(mode)) {
-		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		res = open(my_path, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
 		res = close(res);
 	} else if (S_ISFIFO(mode))
-		res = mkfifo(path, mode);
+		res = mkfifo(my_path, mode);
 	else
-		res = mknod(path, mode, rdev);
+		res = mknod(my_path, mode, rdev);
 	if (res == -1)
 		return -errno;
 
@@ -234,7 +285,7 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-	printf("I am in xmp_mkdir\n");
+	printf("\n\nI am in xmp_mkdir\n\n");
 	int res;
 
 	res = mkdir(path, mode);
@@ -246,10 +297,14 @@ static int xmp_mkdir(const char *path, mode_t mode)
 
 static int xmp_unlink(const char *path)
 {
-	printf("Unlink\n");
+	printf("\n\nUnlink\n\n");
 	int res;
 
-	res = unlink(path);
+	char my_path[100];
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+
+	res = unlink(my_path);
 	if (res == -1)
 		return -errno;
 
@@ -258,7 +313,7 @@ static int xmp_unlink(const char *path)
 
 static int xmp_rmdir(const char *path)
 {
-	printf("rmdir\n");
+	printf("\n\nrmdir\n\n");
 	int res;
 
 	res = rmdir(path);
@@ -270,7 +325,7 @@ static int xmp_rmdir(const char *path)
 
 static int xmp_symlink(const char *from, const char *to)
 {
-	printf("symlink\n");
+	printf("\n\nsymlink\n\n");
 	int res;
 
 	res = symlink(from, to);
@@ -282,7 +337,7 @@ static int xmp_symlink(const char *from, const char *to)
 
 static int xmp_rename(const char *from, const char *to)
 {
-	printf("rename\n");
+	printf("\n\nrename\n\n");
 	int res;
 
 	res = rename(from, to);
@@ -294,7 +349,7 @@ static int xmp_rename(const char *from, const char *to)
 
 static int xmp_link(const char *from, const char *to)
 {
-	printf("link\n");
+	printf("\n\n link\n\n");
 	int res;
 
 	res = link(from, to);
@@ -306,7 +361,7 @@ static int xmp_link(const char *from, const char *to)
 
 static int xmp_chmod(const char *path, mode_t mode)
 {
-	printf("chmod\n");
+	printf("\n\nchmod\n\n");
 	int res;
 
 	res = chmod(path, mode);
@@ -318,7 +373,7 @@ static int xmp_chmod(const char *path, mode_t mode)
 
 static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 {
-	printf("chown\n");
+	printf("\n\nchown\n\n");
 	int res;
 
 	res = lchown(path, uid, gid);
@@ -330,7 +385,7 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 
 static int xmp_truncate(const char *path, off_t size)
 {
-	printf("truncate\n");
+	printf("\n\ntruncate\n\n");
 	int res;
 
 	res = truncate(path, size);
@@ -342,7 +397,7 @@ static int xmp_truncate(const char *path, off_t size)
 
 static int xmp_utimens(const char *path, const struct timespec ts[2])
 {
-	printf("utimens\n");
+	printf("\n\nutimens\n\n");
 	int res;
 	struct timeval tv[2];
 
@@ -360,7 +415,7 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
-	printf("I am in open\n");
+	printf("\n\nI am in open\n\n");
 	char my_path[100];
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
@@ -407,13 +462,52 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
 
 static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-	printf("I am in read\n");
+	printf("\n\nI am in read\n\n");
 	printf("Path : %s\n",path);
 	printf("Buf : %s\n", buf);
 	printf("Offset : %d\n", offset);
-	
+
+	char my_path[100];
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+
+        int res;
+
+        // I have to send the path from here to the namenode..
+        // Get back the list of files..
+        COMMAND_NAME = malloc (1+sizeof(char)*strlen(READ));
+        strcpy(COMMAND_NAME, READ);
+        pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+        pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+        char buffer[30];
+        memset(buffer,'\0',30);
+        strcat(my_path,",");
+        snprintf(buffer, 10,"%d",size);
+        strcat(my_path,",");
+        snprintf(buffer, 10,"%d",offset);
+        strcat(my_path,buffer);
+
+        if (sendcommand(namenode, my_path, READ) == -1)
+        {
+                printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+        printf("Waiting for pthread join\n");
+        pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+        printf("End of command\n");
+
+	/*
 	int fd;
-	int res;
 
 	(void) fi;
 	fd = open(path, O_RDONLY);
@@ -424,17 +518,73 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
 	if (res == -1)
 		res = -errno;
 
-	close(fd);
+	close(fd);*/
+	printf("Read Buf : %s\n",read_buf);
+	//free(buf);
+	//buf = malloc (strlen(read_buf)+1);
+	//strcat(buf,"");
+	strcpy(buf,read_buf);
+	res = strlen(read_buf);
+        if (res == -1)
+                return -errno;
+	
 	return res;
 }
 
 static int xmp_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
-	printf("I am in write\n");
-	int fd;
-	int res;
+	printf("\n\nI am in write\n\n");
+	printf("Path : %s\n",path);
+        printf("Buf : %s\n", buf);
+        printf("Size : %s\n", size);
+        printf("Offset : %d\n", offset);
 
+        char my_path[10000];
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+
+	int res;
+	// I have to send the path from here to the namenode..
+        // Get back the list of files..
+        COMMAND_NAME = malloc (1+sizeof(char)*strlen(WRITE));
+        strcpy(COMMAND_NAME, WRITE);
+        pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+        pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+        char buffer[30];
+        memset(buffer,'\0',30);
+        strcat(my_path,",");
+        snprintf(buffer, 10,"%d",size);
+        strcat(my_path,",");
+        snprintf(buffer, 10,"%d",offset);
+        strcat(my_path,buffer);
+	strcat(my_path,",");
+	strcat(my_path,buf);
+
+        if (sendcommand(namenode, my_path, WRITE) == -1)
+        {
+                printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+        printf("Waiting for pthread join\n");
+        pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+        printf("End of command\n");
+
+	res = write_return;
+	if (res == -1)
+		res = -errno;
+	/*
+	int fd;
 	(void) fi;
 	fd = open(path, O_WRONLY);
 	if (fd == -1)
@@ -443,14 +593,14 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	res = pwrite(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
-
-	close(fd);
+	
+	close(fd);*/
 	return res;
 }
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
-	printf("I am in statfs\n");
+	printf("\n\nI am in statfs\n\n");
 	int res;
 
 	res = statvfs(path, stbuf);
@@ -462,7 +612,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 
 static int xmp_release(const char *path, struct fuse_file_info *fi)
 {
-	printf("I am in release\n");
+	printf("\n\nI am in release\n\n");
 	/* Just a stub.	 This method is optional and can safely be left
 	   unimplemented */
 
@@ -488,7 +638,7 @@ static int xmp_fsync(const char *path, int isdatasync,
 static int xmp_setxattr(const char *path, const char *name, const char *value,
 			size_t size, int flags)
 {
-	printf("I am in setxattr\n");
+	printf("\n\nI am in setxattr\n\n");
 	int res = lsetxattr(path, name, value, size, flags);
 	if (res == -1)
 		return -errno;
@@ -498,7 +648,7 @@ static int xmp_setxattr(const char *path, const char *name, const char *value,
 static int xmp_getxattr(const char *path, const char *name, char *value,
 			size_t size)
 {
-	printf("I am in getxattr\n");
+	printf("\n\nI am in getxattr\n\n");
 	int res = lgetxattr(path, name, value, size);
 	if (res == -1)
 		return -errno;
@@ -507,7 +657,7 @@ static int xmp_getxattr(const char *path, const char *name, char *value,
 
 static int xmp_listxattr(const char *path, char *list, size_t size)
 {
-	printf("I am in list xattr\n");
+	printf("\n\nI am in list xattr\n\n");
 	int res = llistxattr(path, list, size);
 	if (res == -1)
 		return -errno;
@@ -516,7 +666,7 @@ static int xmp_listxattr(const char *path, char *list, size_t size)
 
 static int xmp_removexattr(const char *path, const char *name)
 {
-	printf("I am in remove xattr\n");
+	printf("\n\nI am in remove xattr\n\n");
 	int res = lremovexattr(path, name);
 	if (res == -1)
 		return -errno;
