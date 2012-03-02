@@ -8,6 +8,7 @@
 #define GETATTR "getattr"
 #define DATANODE "datanode"
 #define READDIR "readdir"
+#define OPEN "open"
 #define DNULL 0 
 #define EOS '\0'
 #define MAXF 200
@@ -18,5 +19,7 @@ struct stat *st_getattr;
 //struct readdir_list *rlist_all[1024];
 struct readdir_list *rlist_all;
 char readdir_buf[10000];
+int access_return = 0;
+int open_return = 0;
 
 #endif
