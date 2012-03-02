@@ -32,7 +32,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	pthread_t recvcmd_thread;
 		
 	char my_path[100];
-	//strcpy(my_path,"/tmp/shyam-fuse");
+	memset(my_path,'\0',100);
 	strcpy(my_path,tmp_path);
 	strcat(my_path,path);
 
@@ -60,23 +60,8 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	free(COMMAND_NAME);
 	
 	//res = lstat(path, stbuf);
-	//printf("stbuf uid : %d\n", st_getattr->st_uid);
 	//now copy stuff from st_getattr to stbuf
 	memset(stbuf, 0, sizeof(struct stat));
-	/*stbuf->st_mode	= st_getattr->st_mode;
-        stbuf->st_ino	= st_getattr->st_ino;
-        stbuf->st_dev	= st_getattr->st_dev;
-        stbuf->st_rdev	= st_getattr->st_rdev;
-        stbuf->st_nlink	= st_getattr->st_nlink;
-        stbuf->st_uid	= st_getattr->st_uid;
-        stbuf->st_gid	= st_getattr->st_gid;
-        stbuf->st_size	= st_getattr->st_size;
-        stbuf->st_atime = st_getattr->st_atime;
-        stbuf->st_mtime	= st_getattr->st_mtime;
-        stbuf->st_ctime = st_getattr->st_ctime;
-        stbuf->st_blksize = st_getattr->st_blksize;
-        stbuf->st_blocks = st_getattr->st_blocks;
-	free(st_getattr);*/
 
 	char *resv = strtok(getattr_buf,",");
 	res = atoi(resv);
@@ -123,8 +108,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	tmp = strtok(NULL,",");
 	stbuf->st_blocks = atoi(tmp);
 	
-
-	
+	/*
 	printf("st buf mode     : %d\n", stbuf->st_mode);
         printf("st buf ino      : %d\n", stbuf->st_ino);
         printf("st buf dev      : %d\n", stbuf->st_dev);
@@ -138,8 +122,8 @@ static int my_getattr(const char *path, struct stat *stbuf)
         printf("st buf ctime    : %d\n", stbuf->st_ctime);
         printf("st buf blksize  : %d\n", stbuf->st_blksize);
         printf("st buf blocks   : %d\n", stbuf->st_blocks);
-	
-	printf("End of getattr\n");
+	*/
+	printf("End of getattr %s\n",path);
 	return 0;
 }
 
@@ -208,8 +192,9 @@ static int xmp_readlink(const char *path, char *buf, size_t size)
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
-	printf("\n\nI am in readdir\n");
+	printf("\n\nI am in readdir %s\n",path);
 	char my_path[100];
+	memset(my_path,'\0',100);
         //strcpy(my_path,"/tmp/shyam-fuse");
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
@@ -256,6 +241,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			break;
 		val = strtok(NULL,",");
 	}
+	printf("End of readdir %s\n",path);
 	return 0;
 }
 
