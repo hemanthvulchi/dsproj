@@ -105,18 +105,19 @@ int receivecommand_server()
 	int rc = 0;
 	char host[100];
 	char serv[100];
+	char *cmd;
 	while (1)
 	{
 		printf("Waiting to receive\n");
-        	rc = recvfrom(socketb, buf1, 100, 0, &senderaddress, &slen);
-		printf("REceived\n");
+		memset(buf1,'\0',1000);
+        	rc = recvfrom(socketb, buf1, 1000, 0, &senderaddress, &slen);
         	if (rc == 0)
         		printf("Receive failed\n");
         	else if (rc == -1)
         		printf("recv() failed\n");
-		char *cmd;
 		cmd = strtok(buf1,",");
-		printf("\nSocket Command: before getnameinfo cmd:%s",cmd);
+		printf("REceived cmd %s\n",cmd);
+
 		getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
 		printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 		printf("\nSocket Command: command recieved:%s",cmd);
@@ -129,7 +130,7 @@ int receivecommand_server()
 			char *path;
 			path = strtok(NULL,",");
 			printf("User is trying to access something.. \n");
-			printf("What do I do, naan enna seyya.. \n");
+			//printf("What do I do, naan enna seyya.. \n");
 			//May be intimate some process.
 			if(sendresponse_getattr(host, path) == -1)
 			{
@@ -158,8 +159,9 @@ int receivecommand_server()
 		else if(strcmp(cmd,READDIR)==0)
 		{
 			printf("In readdir\n");
-			char *path;
+			char *path = NULL;
 			path = strtok(NULL, ",");
+			printf("Path : %s\n",path);
 			if (sendresponse_readdir(host,path) == -1)
 				continue;
 		}
@@ -231,6 +233,7 @@ int receivecommand_server()
 		{
 			printf("Unknown command %s\n",cmd);
 		}
+		cmd = NULL;
 	}
 	shutdown(socketb,2);
 	return 0;
@@ -434,21 +437,29 @@ int sendresponse_readdir(char *node, char *path)
         char ip[100];
         if (hostname_to_ip(node, ip) == -1)
                 return -1;
+	printf("After hostname\n");
         sendaddress.sin_family = AF_INET;
         sendaddress.sin_port = htons(RESPONSE_PORT);
         if (inet_aton(ip, &sendaddress.sin_addr)==0) {
-                fprintf(stderr, "inet_aton() failed\n");
+                printf(stderr, "inet_aton() failed\n");
                 exit(1);
         }
 
 	int count = 0;
-	DIR *dp;
-	struct dirent *de;
+	DIR *dp = NULL;
+	struct dirent *de = NULL;
+	
 	dp = opendir(path);
 	//dp = opendir("/tmp/shyam-fuse");
+	printf("I am here\n");
 	if (dp == NULL)
+	{
+		printf("DP == Null\n");
 		return -errno;
+	}
+	printf("I am here\n");
 
+	
 	char listfiles[10000];
 	memset(listfiles,'\0',10000);
 	strcpy(listfiles,"");
@@ -470,6 +481,8 @@ int sendresponse_readdir(char *node, char *path)
 		strcat(listfiles, buffer);
 		strcat(listfiles,",");
 	}
+	closedir(dp);
+	printf("Am I here\n");
 	int ret = sendto(socketa, listfiles, strlen(listfiles), 0, &sendaddress, slen);
         if (ret == 0)
         {
@@ -681,6 +694,7 @@ int receiveresponse_client()
         char serv[100];
         if (strcmp(COMMAND_NAME,GETATTR)==0)
 	{
+		memset(getattr_buf,'\0',1000);
         	printf("Waiting to receive Getattr\n");
         	rc = recvfrom(socketb, &getattr_buf, 1000, 0, &senderaddress, &slen);
         	if (rc == 0)
@@ -693,6 +707,7 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, READDIR)==0)
 	{
+		printf("Readdir client receive\n");
 		memset(readdir_buf,'\0',10000);
 		rc = recvfrom(socketb, &readdir_buf, 10000, 0, &senderaddress, &slen);
                 if (rc == 0)
