@@ -121,6 +121,28 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
 	printf("I am in readdir\n");
+
+	// I have to send the path from here to the namenode..
+	// Get back the list of files..
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
+        strcpy(COMMAND_NAME, READDIR);
+	pthread_t recvcmd_thread;
+        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	if (sendcommand(namenode, path, READDIR) == -1)
+        {
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+
 	DIR *dp;
 	struct dirent *de;
 
