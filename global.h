@@ -9,7 +9,6 @@
 #define DATANODE "datanode"
 #define READDIR "readdir"
 #define MKDIR "mkdir"
-#define MKDIR "mkdir"
 #define OPEN "open"
 #define READ "read"
 #define WRITE "write"
