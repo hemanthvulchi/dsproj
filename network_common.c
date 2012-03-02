@@ -47,8 +47,7 @@ struct dirent_detail
 struct readdir_list
 {
 	int n;
-	struct dirent_detail dlist[1024];
+	//struct dirent_detail dlist[1024];
 	//struct dirent de;
 };
-
 #endif
