@@ -116,14 +116,16 @@ int receivecommand_server()
         		printf("recv() failed\n");
 		char *cmd;
 		cmd = strtok(buf1,",");
-
+		printf("\nSocket Command: before getnameinfo cmd:%s",cmd);
 		getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
 		printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+		printf("\nSocket Command: command recieved:%s",cmd);
 		//Write some breaking function here..
 		// As of now, Idea is to keep waiting, if u want to break.. set a variable somewhere.. notify some node, which will ping back in acknowledgement..
 		// This will make me reach this point from recvfrom.. and i will do a break here..
 		if (strcmp(cmd,GETATTR)==0)
 		{
+     		printf("\nSocket Command: in GETATTR");
 			char *path;
 			path = strtok(NULL,",");
 			printf("User is trying to access something.. \n");
@@ -216,6 +218,15 @@ int receivecommand_server()
                         if (sendresponse_write(host,path,sz,off,w_buf) == -1)
                                 continue;
                 }
+		else if(strcmp(cmd,MKDIR==0))
+		{
+			printf("In MKDIR\n");
+			char *path;
+			path = strtok(NULL, ",");
+			int imode=	atoi(strtok(NULL, ","));			
+			if (sendresponse_mkdir(host,path,imode) == -1)
+				continue;
+		}		
 		else
 		{
 			printf("Unknown command %s\n",cmd);
@@ -476,6 +487,47 @@ int sendresponse_readdir(char *node, char *path)
         return 0;
 }
 
+
+int sendresponse_mkdir(char *node, char *path,int imode)
+{
+	printf("Send response mkdir %s\n", path);
+	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+		char msg;		
+		int res = mkdir(path, imode);
+		if (res == -1)
+			msg='N';
+		else
+			msg='Y';		
+	
+		int ret = sendto(socketa, msg, strlen(msg), 0, &sendaddress, slen);
+
+        if (ret == 0)
+        {
+                printf("Send failed\n");
+                return -1;
+        }
+        else if (ret == -1)
+        {
+                printf("send() failed\n");
+                return -1;
+        }
+        printf("Sending response done\n");
+	
+        close(socketa);
+        return 0;
+}
 int sendresponse_getattr(char *node, char *path)
 {
 	printf("Send response getattr to %s\n",node);
@@ -695,6 +747,20 @@ int receiveresponse_client()
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
+	else if (strcmp(COMMAND_NAME, MKDIR)==0)
+	{
+		memset(readdir_buf,'\0',10000);
+		rc = recvfrom(socketb, &mkdir_buf, 10000, 0, &senderaddress, &slen);
+                if (rc == 0)
+                        printf("Receive failed\n");
+                else if (rc == -1)
+                        printf("recv() failed\n");
+								printf("Count : %s\n", mkdir_buf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	
+
         close(socketb);
 	return 0;
 }

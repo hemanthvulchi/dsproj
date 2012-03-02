@@ -8,6 +8,8 @@
 #define GETATTR "getattr"
 #define DATANODE "datanode"
 #define READDIR "readdir"
+#define MKDIR "mkdir"
+#define MKDIR "mkdir"
 #define OPEN "open"
 #define READ "read"
 #define WRITE "write"
@@ -25,5 +27,5 @@ int access_return = 0;
 int open_return = 0;
 char read_buf[4096];
 int write_return = 0;
-
+char mkdir_buf;
 #endif
