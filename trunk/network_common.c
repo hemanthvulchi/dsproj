@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <dirent.h>
 
 int hostname_to_ip(char *hostname, char *ip)
 {
@@ -34,5 +35,20 @@ int hostname_to_ip(char *hostname, char *ip)
         }
         return 1;
 }
+
+// Structure to send list of directories.. :)
+// I am just creating so that later if I have to add anything, I can add.
+struct dirent_detail
+{
+	char d_name[100];
+	int d_type;
+	long int d_ino;
+};
+struct readdir_list
+{
+	int n;
+	struct dirent_detail dlist[1024];
+	//struct dirent de;
+};
 
 #endif
