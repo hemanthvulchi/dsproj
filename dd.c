@@ -366,7 +366,7 @@ int removefold(char* vpath)
 	else
 	{
 		tempn=temp;
-		removefile(tempn)->data.loc;
+		removefile(tempn->data.loc);
 	}
 
 	return 0;

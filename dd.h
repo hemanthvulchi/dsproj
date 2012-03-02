@@ -37,7 +37,7 @@ node *addnode(char* vpath,datadef vdata);
 void  ninitialize(); 
 node *addfile(char *fname,char *dname,char *loc);
 node *addfolder(char *fname,char *dname,char *loc);
-int removefile;(char* vpath);
+int removefile(char* vpath);
 int removefold(char* vpath);
 int dummymain();
 #endif
