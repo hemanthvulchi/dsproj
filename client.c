@@ -30,7 +30,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	printf("Path : %s\n", path);
 	int res;
 	pthread_t recvcmd_thread;
-
+		
 	char my_path[100];
 	//strcpy(my_path,"/tmp/shyam-fuse");
 	strcpy(my_path,tmp_path);
@@ -46,14 +46,16 @@ static int my_getattr(const char *path, struct stat *stbuf)
 		free(COMMAND_NAME);
                 exit(1);
         }
-
+	printf("\nGetattr sent thread");
 	if (sendcommand(namenode, my_path, GETATTR) == -1)
 	{
+		printf("\nGetattr before thread kill");
 		pthread_kill(recvcmd_thread,0);
 		free(COMMAND_NAME);
 		return -1;
 	}
 	// now receive response and do something..
+	printf("\nGetattr before join");
 	pthread_join(recvcmd_thread, NULL);
 	free(COMMAND_NAME);
 	
@@ -250,7 +252,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		st.st_ino = atoi(val);
 		val = strtok(NULL,",");
 		st.st_mode = atoi(val) << 12;
-		if (filler(buf, name, &st, 0))
+		if (filler(buf,name, &st, 0))
 			break;
 		val = strtok(NULL,",");
 	}
@@ -273,7 +275,8 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 		res = open(my_path, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
 		res = close(res);
-	} else if (S_ISFIFO(mode))
+		}
+	else if (S_ISFIFO(mode))
 		res = mkfifo(my_path, mode);
 	else
 		res = mknod(my_path, mode, rdev);
@@ -285,13 +288,38 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-	printf("\n\nI am in xmp_mkdir\n\n");
+	printf("I am in xmp_mkdir :path:%s mode:%s \n",path,mode);
 	int res;
+		COMMAND_NAME = malloc (1+sizeof(char)*strlen(MKDIR));
+        strcpy(COMMAND_NAME, MKDIR);
+	pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+	pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+	printf("Make dir: Started receieving\n");
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	if (sendcommand(namenode, path, READDIR) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Make dir: Command Sent\n");        
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+	printf("End of command\n");
 
+/*
 	res = mkdir(path, mode);
 	if (res == -1)
 		return -errno;
-
+*/
 	return 0;
 }
 
@@ -517,7 +545,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
 	res = pread(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
-
+	
 	close(fd);*/
 	printf("Read Buf : %s\n",read_buf);
 	//free(buf);
