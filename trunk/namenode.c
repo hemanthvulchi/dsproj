@@ -12,7 +12,7 @@
 #include "socket_command.c"
 #include "dd.h"
 #include "dd.c"
-node* head = DNULL; 
+
 
 // Its not already init, its the big init..
 // All of heamnath's code will go in here..

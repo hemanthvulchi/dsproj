@@ -11,6 +11,7 @@ char loc[MAX_PATH];
 int dflag;
 } datadef; 
 int nodeno;
+
 typedef struct list 
 { 
 datadef data; 
@@ -18,6 +19,7 @@ struct list *next;
 struct list *prev; 
 struct list *fold;
 }node; 
+node *head = DNULL;
 void printdata(node* temp);
 void parsepath(char* ans,char* vpath);
 void parserpath(char* ans,char* vpath);
