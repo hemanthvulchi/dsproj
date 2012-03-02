@@ -168,6 +168,7 @@ int receivecommand_server()
 
 int sendresponse_readdir(char *node, char *path)
 {
+	printf("Send response readdir %s\n", path);
 	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         struct sockaddr_in sendaddress;
         int slen = sizeof(sendaddress);
@@ -185,45 +186,14 @@ int sendresponse_readdir(char *node, char *path)
 	int count = 0;
 	DIR *dp;
 	struct dirent *de;
-	//dp = opendir(path);
-	dp = opendir("/tmp/shyam-fuse");
+	dp = opendir(path);
+	//dp = opendir("/tmp/shyam-fuse");
 	if (dp == NULL)
 		return -errno;
-
-	/*
-	while ((de = readdir(dp)) != NULL) {
-		count++;
-	}
-	printf("Count : %d\n", count);
-
-	// Sending # of files so as to prepare the receiver..
-        int ret = sendto(socketa, &count, sizeof(int), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
-	*/
 
 	char listfiles[10000];
 	memset(listfiles,'\0',10000);
 	strcpy(listfiles,"");
-	//struct readdir_list rlist[count];
-	//struct readdir_list *rlist = malloc(sizeof(struct readdir_list));
-	//rlist->n = count;
-	//printf("Size of rlist : %d\n",sizeof(rlist));
-	//rlist_all[] = malloc (sizeof(struct readdir_list)*count);
-	/*int i = 0;
-	dp=opendir(path);
-	if (dp == NULL)
-		return -errno;
-	printf("here\n");*/
 	while ((de = readdir(dp)) != NULL)
 	{
 		printf("d_name %s\n",de->d_name);
@@ -232,25 +202,16 @@ int sendresponse_readdir(char *node, char *path)
 		strcat(listfiles,de->d_name);
 		strcat(listfiles,",");
 		char buffer[30];
+		memset(buffer,'\0',30);
 		snprintf(buffer, 10,"%d",de->d_type);
 		strcat(listfiles, buffer);
 		strcat(listfiles, ",");
-		strcpy(buffer,"");
+		//strcpy(buffer,"");
+		memset(buffer,'\0',30);
 		snprintf(buffer, 10,"%d",de->d_ino);
 		strcat(listfiles, buffer);
 		strcat(listfiles,",");
-		//rlist_all[i] = malloc (sizeof(struct readdir_list));
-		
-		//strcpy(rlist->dlist[i].d_name,de->d_name);
-		//rlist->dlist[i].d_type = de->d_type;
-		//rlist->dlist[i].d_ino = de->d_ino;
-		
-		//strcpy(rlist.d_name, de->d_name);
-		//rlist.d_type = de->d_type;
-		//rlist.d_ino = de->d_ino;
-		//i++;
 	}
-	//ret = sendto(socketa, &rlist, sizeof(rlist), 0, &sendaddress, slen);
 	int ret = sendto(socketa, listfiles, strlen(listfiles), 0, &sendaddress, slen);
         if (ret == 0)
         {
@@ -271,6 +232,7 @@ int sendresponse_readdir(char *node, char *path)
 int sendresponse_getattr(char *node, char *path)
 {
 	printf("Send response getattr to %s\n",node);
+	printf("Requested path %s\n",path);
 	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         struct sockaddr_in sendaddress;
         int slen = sizeof(sendaddress);
@@ -285,9 +247,16 @@ int sendresponse_getattr(char *node, char *path)
                 exit(1);
         }
 
+	/*if (strcmp(path,"/hello.txt") == 0)
+		strcpy(path,"/tmp/shyam-fuse/hello.txt");*/
+
         // this is code to send message
 	struct stat st;
-	st.st_uid = 77; // This is for test..
+	if (stat(path, &st) == -1)
+	{
+		printf("error doing stat\n");
+	}
+	//st.st_uid = 77; // This is for test..
 	// I should load the values in it from hemanth's data..
 	/*
 	st.st_dev 	= 
