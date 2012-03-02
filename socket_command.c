@@ -185,10 +185,12 @@ int sendresponse_readdir(char *node, char *path)
 	int count = 0;
 	DIR *dp;
 	struct dirent *de;
-	dp = opendir(path);
+	//dp = opendir(path);
+	dp = opendir("/tmp/shyam-fuse");
 	if (dp == NULL)
 		return -errno;
-	
+
+	/*
 	while ((de = readdir(dp)) != NULL) {
 		count++;
 	}
@@ -207,21 +209,36 @@ int sendresponse_readdir(char *node, char *path)
                 return -1;
         }
         printf("Sending response done\n");
-	
+	*/
+
+	char listfiles[10000];
+	memset(listfiles,'\0',10000);
+	strcpy(listfiles,"");
 	//struct readdir_list rlist[count];
-	struct readdir_list *rlist = malloc(sizeof(struct readdir_list));
-	rlist->n = count;
-	printf("Size of rlist : %d\n",sizeof(rlist));
+	//struct readdir_list *rlist = malloc(sizeof(struct readdir_list));
+	//rlist->n = count;
+	//printf("Size of rlist : %d\n",sizeof(rlist));
 	//rlist_all[] = malloc (sizeof(struct readdir_list)*count);
-	int i = 0;
+	/*int i = 0;
 	dp=opendir(path);
 	if (dp == NULL)
 		return -errno;
+	printf("here\n");*/
 	while ((de = readdir(dp)) != NULL)
 	{
 		printf("d_name %s\n",de->d_name);
 		printf("d_type %d\n",de->d_type);
 		printf("d_ino %d\n",de->d_ino);
+		strcat(listfiles,de->d_name);
+		strcat(listfiles,",");
+		char buffer[30];
+		snprintf(buffer, 10,"%d",de->d_type);
+		strcat(listfiles, buffer);
+		strcat(listfiles, ",");
+		strcpy(buffer,"");
+		snprintf(buffer, 10,"%d",de->d_ino);
+		strcat(listfiles, buffer);
+		strcat(listfiles,",");
 		//rlist_all[i] = malloc (sizeof(struct readdir_list));
 		
 		//strcpy(rlist->dlist[i].d_name,de->d_name);
@@ -231,9 +248,10 @@ int sendresponse_readdir(char *node, char *path)
 		//strcpy(rlist.d_name, de->d_name);
 		//rlist.d_type = de->d_type;
 		//rlist.d_ino = de->d_ino;
-		i++;
+		//i++;
 	}
-	ret = sendto(socketa, &rlist, sizeof(rlist), 0, &sendaddress, slen);
+	//ret = sendto(socketa, &rlist, sizeof(rlist), 0, &sendaddress, slen);
+	int ret = sendto(socketa, listfiles, strlen(listfiles), 0, &sendaddress, slen);
         if (ret == 0)
         {
                 printf("Send failed\n");
@@ -351,7 +369,7 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, READDIR)==0)
 	{
-		int l_count= 0;
+		/*int l_count= 0;
 		printf("First get the # of files, then allocate memory and get the stuff\n");
 		
 		rc = recvfrom(socketb, &l_count, sizeof(int), 0, &senderaddress, &slen);
@@ -360,25 +378,25 @@ int receiveresponse_client()
                 printf("total : %d\n",l_count);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-		
+		*/
 		//struct readdir_list rlist[no_of_elements];
 		//int i=0;
 		//for (i = 0; i < l_count; i++);
 			//rlist_all[i] = malloc(sizeof(struct readdir_list)*no_of_elements);
-		rlist_all = malloc (sizeof(struct readdir_list));
+		//rlist_all = malloc (sizeof(struct readdir_list));
 		//printf("Address : %p\n",rlist_all);
 		//rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list)*no_of_elements, 0, &senderaddress, &slen);
-		rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list), 0, &senderaddress, &slen);
+		//rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list), 0, &senderaddress, &slen);
+		//char buf[10000];
+		memset(readdir_buf,'\0',10000);
+		rc = recvfrom(socketb, &readdir_buf, 10000, 0, &senderaddress, &slen);
                 if (rc == 0)
                         printf("Receive failed\n");
                 else if (rc == -1)
                         printf("recv() failed\n");
-		printf("Count : %d\n",rlist_all->n);
+		printf("Count : %s\n", readdir_buf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-		//printf("Address : %p\n",rlist_all[0]);
-		//struct readdir_list *tmp = rlist_all[0];
-		//printf("Read and see %s\n",rlist_all->dlist[0].d_name);
 	}
         close(socketb);
 	return 0;

@@ -127,7 +127,8 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
         strcpy(COMMAND_NAME, READDIR);
 	pthread_t recvcmd_thread;
-        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        int cmd_rc = 0;
+	pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
         if (cmd_rc)
         {
                 printf("Name node not to able to initiate receive comamnd thread\n");
@@ -136,33 +137,34 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         }
 	if (sendcommand(namenode, path, READDIR) == -1)
         {
+		printf("Send command failed\n");
                 pthread_kill(recvcmd_thread,0);
                 free(COMMAND_NAME);
                 return -1;
         }
+	printf("Waiting for pthread join\n");
 	pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
-
-	DIR *dp;
-	struct dirent *de;
+	printf("End of command\n");
 
 	(void) offset;
 	(void) fi;
 
-	dp = opendir(path);
-	if (dp == NULL)
-		return -errno;
-
-	while ((de = readdir(dp)) != NULL) {
+	char *val = strtok(readdir_buf,",");
+	while (val != NULL) {
 		struct stat st;
 		memset(&st, 0, sizeof(st));
-		st.st_ino = de->d_ino;
-		st.st_mode = de->d_type << 12;
-		if (filler(buf, de->d_name, &st, 0))
+		char name[100];
+		strcpy(name,val);
+		val = strtok(NULL,",");
+		st.st_ino = atoi(val);
+		val = strtok(NULL,",");
+		st.st_mode = atoi(val) << 12;
+		if (filler(buf, name, &st, 0))
 			break;
+		val = strtok(NULL,",");
 	}
 
-	closedir(dp);
 	return 0;
 }
 
