@@ -94,7 +94,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
 
 static int xmp_access(const char *path, int mask)
 {
-	printf("I am in access\n");
+	printf("\n\nI am in access\n\n");
 	printf("\n\n\nFirst funtion to use\n\n\n");
 	int res = 0;
 	printf("Path : %s\n",path);
