@@ -486,6 +486,7 @@ int parse_arguments(int argc, char **argv)
 {
 	// Check server details here - return -1 for error..
 	namenode = malloc (strlen(argv[1])*sizeof(char)+1);
+	printf("namenode %s\n",namenode);
 	// Ping Server and check if host exists.
 	if(sendping(argv[1]) == -1)
 		return -1;
@@ -505,9 +506,6 @@ int parse_arguments(int argc, char **argv)
 		if (strcmp(argv[i],"-d") == 0)*/
         		add_fuse_arg("-d");
 	//}
-
-	//To add any more argument in the future, use the below command as a sample
-	//add_fuse_arg(argv[2]);
 	return 1;
 }
 

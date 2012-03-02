@@ -151,6 +151,7 @@ int receivecommand_server()
 		}
 		else if(strcmp(cmd,READDIR)==0)
 		{
+			printf("In readdir\n");
 			char *path;
 			path = strtok(NULL, ",");
 			if (sendresponse_readdir(host,path) == -1)
@@ -160,7 +161,6 @@ int receivecommand_server()
 		{
 			printf("Unknown command %s\n",cmd);
 		}
-        	//printf("Received packet from %s : %d bytes\nData: %s\n\n",inet_ntoa(senderaddress.sin_addr), ntohs(senderaddress.sin_port), buf1);
 	}
 	shutdown(socketb,2);
 	return 0;
@@ -193,8 +193,8 @@ int sendresponse_readdir(char *node, char *path)
 		count++;
 	}
 	printf("Count : %d\n", count);
+
 	// Sending # of files so as to prepare the receiver..
-	/*
         int ret = sendto(socketa, &count, sizeof(int), 0, &sendaddress, slen);
         if (ret == 0)
         {
@@ -206,7 +206,8 @@ int sendresponse_readdir(char *node, char *path)
                 printf("send() failed\n");
                 return -1;
         }
-        printf("Sending response done\n");*/
+        printf("Sending response done\n");
+	
 	//struct readdir_list rlist[count];
 	struct readdir_list *rlist = malloc(sizeof(struct readdir_list));
 	rlist->n = count;
@@ -223,16 +224,16 @@ int sendresponse_readdir(char *node, char *path)
 		printf("d_ino %d\n",de->d_ino);
 		//rlist_all[i] = malloc (sizeof(struct readdir_list));
 		
-		strcpy(rlist->dlist[i].d_name,de->d_name);
-		rlist->dlist[i].d_type = de->d_type;
-		rlist->dlist[i].d_ino = de->d_ino;
-		/*
-		strcpy(rlist.d_name, de->d_name);
-		rlist.d_type = de->d_type;
-		rlist.d_ino = de->d_ino;*/
+		//strcpy(rlist->dlist[i].d_name,de->d_name);
+		//rlist->dlist[i].d_type = de->d_type;
+		//rlist->dlist[i].d_ino = de->d_ino;
+		
+		//strcpy(rlist.d_name, de->d_name);
+		//rlist.d_type = de->d_type;
+		//rlist.d_ino = de->d_ino;
 		i++;
 	}
-	int ret = sendto(socketa,(void *) &rlist, sizeof(rlist), 0, &sendaddress, slen);
+	ret = sendto(socketa, &rlist, sizeof(rlist), 0, &sendaddress, slen);
         if (ret == 0)
         {
                 printf("Send failed\n");
@@ -244,9 +245,9 @@ int sendresponse_readdir(char *node, char *path)
                 return -1;
         }
         printf("Sending response done\n");
+	
         close(socketa);
         return 0;
-
 }
 
 int sendresponse_getattr(char *node, char *path)
@@ -350,16 +351,16 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, READDIR)==0)
 	{
-		//int l_count= 0;
+		int l_count= 0;
 		printf("First get the # of files, then allocate memory and get the stuff\n");
-		/*
+		
 		rc = recvfrom(socketb, &l_count, sizeof(int), 0, &senderaddress, &slen);
 		if (rc == 0) printf("Receive failed\n");
                 else if (rc == -1) printf("recv() failed\n");
                 printf("total : %d\n",l_count);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-		*/
+		
 		//struct readdir_list rlist[no_of_elements];
 		//int i=0;
 		//for (i = 0; i < l_count; i++);
@@ -367,17 +368,17 @@ int receiveresponse_client()
 		rlist_all = malloc (sizeof(struct readdir_list));
 		//printf("Address : %p\n",rlist_all);
 		//rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list)*no_of_elements, 0, &senderaddress, &slen);
-		rc = recvfrom(socketb, (struct readdir_list *)rlist_all, sizeof(struct readdir_list), 0, &senderaddress, &slen);
+		rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list), 0, &senderaddress, &slen);
                 if (rc == 0)
                         printf("Receive failed\n");
                 else if (rc == -1)
                         printf("recv() failed\n");
+		printf("Count : %d\n",rlist_all->n);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-		printf("Count : %d\n",rlist_all->n);
 		//printf("Address : %p\n",rlist_all[0]);
 		//struct readdir_list *tmp = rlist_all[0];
-		printf("Read and see %s\n",rlist_all->dlist[0].d_name);
+		//printf("Read and see %s\n",rlist_all->dlist[0].d_name);
 	}
         close(socketb);
 	return 0;

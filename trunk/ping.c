@@ -87,7 +87,9 @@ int receiveping()
 	char serv[100];
 	while (1)
 	{
+		printf("Ping waiting\n");
         	rc = recvfrom(socketb, buf1, 100, 0, &senderaddress, &slen);
+		printf("Ping message received\n");
         	if (rc == 0)
         		printf("Receive failed\n");
         	else if (rc == -1)
