@@ -565,6 +565,7 @@ int sendresponse_getattr(char *node, char *path)
         // this is code to send message
 	struct stat st;
 	int res = stat(path,&st);
+	printf("sendresp get attr stat res:%d, path:%s",res, path);
 	char gattr_b[1000];
         memset(gattr_b,'\0',1000);
 
@@ -574,6 +575,8 @@ int sendresponse_getattr(char *node, char *path)
 	}
 	else
 	{
+		printf("sendresp get atrr: else part\n");
+		printf("sendresp get atrr: else part:%s\n",st);
 		char buffer[30];
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",res);
