@@ -20,6 +20,8 @@
 #include "ping.c"
 #include "socket_command.c"
 
+char tmp_path[100] = "/tmp/shyam-fuse";
+
 char *namenode = NULL;
 
 static int my_getattr(const char *path, struct stat *stbuf)
@@ -30,7 +32,8 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	pthread_t recvcmd_thread;
 
 	char my_path[100];
-	strcpy(my_path,"/tmp/shyam-fuse");
+	//strcpy(my_path,"/tmp/shyam-fuse");
+	strcpy(my_path,tmp_path);
 	strcat(my_path,path);
 
 	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
@@ -97,22 +100,43 @@ static int xmp_access(const char *path, int mask)
 	printf("\n\nI am in access\n\n");
 	printf("\n\n\nFirst funtion to use\n\n\n");
 	int res = 0;
+
 	printf("Path : %s\n",path);
+	char my_path[100];
+        //strcpy(my_path,"/tmp/shyam-fuse");
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
 
 	if (strcmp(path,"/") != 0)
 	{
-		COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
-        	strcpy(COMMAND_NAME, GETATTR);
-
-		if (sendcommand(namenode, path, ACCESS) == -1)
+		pthread_t recvcmd_thread;
+        	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        	if (cmd_rc)
         	{
+                	printf("Name node not to able to initiate receive comamnd thread\n");
                 	free(COMMAND_NAME);
-                	return -1;
+                	exit(1);
         	}
-        	free(COMMAND_NAME);
-		res = -1;
-	}
 
+		COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
+       		strcpy(COMMAND_NAME, GETATTR);
+		char buffer[30];
+                memset(buffer,'\0',30);
+                snprintf(buffer, 10,"%d",mask);
+		strcat(my_path,",");
+		strcat(my_path,buffer);
+		if (sendcommand(namenode, my_path, ACCESS) == -1)
+       		{
+			printf("Send command failed\n");
+                	pthread_kill(recvcmd_thread,0);
+               		free(COMMAND_NAME);
+               		return -1;
+       		}
+		printf("Waiting for pthread join\n");
+		pthread_join(recvcmd_thread, NULL);
+       		free(COMMAND_NAME);
+		res = access_return;
+	}
 	//res = access(path, mask);
 	if (res == -1)
 		return -errno;
@@ -133,13 +157,13 @@ static int xmp_readlink(const char *path, char *buf, size_t size)
 	return 0;
 }
 
-
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
 	printf("I am in readdir\n");
 	char my_path[100];
-        strcpy(my_path,"/tmp/shyam-fuse");
+        //strcpy(my_path,"/tmp/shyam-fuse");
+        strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
 	// I have to send the path from here to the namenode..
@@ -184,7 +208,6 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			break;
 		val = strtok(NULL,",");
 	}
-
 	return 0;
 }
 
@@ -338,19 +361,57 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
 	printf("I am in open\n");
-	int res;
+	char my_path[100];
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
 
-	res = open(path, fi->flags);
+	int res;
+	printf("Fi flags %d\n", fi->flags);
+
+	// I have to send the path from here to the namenode..
+        // Get back the list of files..
+        COMMAND_NAME = malloc (1+sizeof(char)*strlen(OPEN));
+        strcpy(COMMAND_NAME, OPEN);
+        pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+        pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+        char buffer[30];
+        memset(buffer,'\0',30);
+        snprintf(buffer, 10,"%d",fi->flags);
+        strcat(my_path,",");
+        strcat(my_path,buffer);
+
+        if (sendcommand(namenode, my_path, OPEN) == -1)
+        {
+                printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+        printf("Waiting for pthread join\n");
+        pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+        printf("End of command\n");
+
+	res = open_return;
 	if (res == -1)
 		return -errno;
-
-	close(res);
 	return 0;
 }
 
 static int xmp_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	printf("I am in read\n");
+	printf("Path : %s\n",path);
+	printf("Buf : %s\n", buf);
+	printf("Offset : %d\n", offset);
+	
 	int fd;
 	int res;
 

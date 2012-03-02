@@ -148,6 +148,9 @@ int receivecommand_server()
 			char *path;
                         path = strtok(NULL,",");
 			printf("Path : %s\n",path);
+			char *mask = strtok(NULL,",");
+			if (sendresponse_access(host,path,atoi(mask)) == -1)
+				continue;
 		}
 		else if(strcmp(cmd,READDIR)==0)
 		{
@@ -157,6 +160,16 @@ int receivecommand_server()
 			if (sendresponse_readdir(host,path) == -1)
 				continue;
 		}
+		else if(strcmp(cmd,OPEN)==0)
+		{
+			printf("In open\n");
+			char *path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			char *flags = strtok(NULL,",");
+			printf("Flags %s\n",flags);
+			if (sendresponse_open(host,path,atoi(flags)) == -1)
+				continue;
+		}
 		else
 		{
 			printf("Unknown command %s\n",cmd);
@@ -164,6 +177,98 @@ int receivecommand_server()
 	}
 	shutdown(socketb,2);
 	return 0;
+}
+
+int sendresponse_open(char *node, char *path, int flags)
+{
+        printf("Send response access %s %d\n", path, flags);
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+        int ret;
+        int res;
+        res = open(path, flags);
+        if (res == -1)
+        {
+                res = -errno;
+                ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
+        }
+        else
+	{
+                ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
+		close(res);
+	}
+        if (ret == 0)
+        {
+                printf("Send failed\n");
+                return -1;
+        }
+        else if (ret == -1)
+        {
+                printf("send() failed\n");
+                return -1;
+        }
+        printf("Sending response done\n");
+
+	close(socketa);
+        return 0;
+}
+
+int sendresponse_access(char *node, char *path, int mask)
+{
+	printf("Send response access %s\n", path);
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	int ret;
+	int res;
+        res = access(path, mask);
+        if (res == -1)
+	{
+		res = -errno;
+		ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
+                return -errno;	
+	}
+	else
+	{
+		ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
+	}
+	if (ret == 0)
+        {
+                printf("Send failed\n");
+                return -1;
+        }
+        else if (ret == -1)
+        {
+                printf("send() failed\n");
+                return -1;
+        }
+        printf("Sending response done\n");
+
+        close(socketa);
+        return 0;
 }
 
 int sendresponse_readdir(char *node, char *path)
@@ -256,26 +361,8 @@ int sendresponse_getattr(char *node, char *path)
 	{
 		printf("error doing stat\n");
 	}
-	//st.st_uid = 77; // This is for test..
-	// I should load the values in it from hemanth's data..
-	/*
-	st.st_dev 	= 
-	st.st_ino 	= 
-	st.st_mode 	=
-	st.st_nlink	=
-	st.st_uid 	= 
-	st.st_gid 	=
-	st.st_rdev  	=
-	st.st_size 	=
-	st.st_blksize 	=
-	st.st_blocks 	=
-	st.st_atime 	= 
-	st.st_mtime 	=
-	st.st_ctime 	=
-	*/
 	// I should load contents in st before I send..
         int ret = sendto(socketa, &st, sizeof(struct stat), 0, &sendaddress, slen);
-	//printf("send uid : %d\n",st.st_uid);
         if (ret == 0)
         {
                 printf("Send failed\n");
@@ -338,25 +425,6 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, READDIR)==0)
 	{
-		/*int l_count= 0;
-		printf("First get the # of files, then allocate memory and get the stuff\n");
-		
-		rc = recvfrom(socketb, &l_count, sizeof(int), 0, &senderaddress, &slen);
-		if (rc == 0) printf("Receive failed\n");
-                else if (rc == -1) printf("recv() failed\n");
-                printf("total : %d\n",l_count);
-                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
-                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-		*/
-		//struct readdir_list rlist[no_of_elements];
-		//int i=0;
-		//for (i = 0; i < l_count; i++);
-			//rlist_all[i] = malloc(sizeof(struct readdir_list)*no_of_elements);
-		//rlist_all = malloc (sizeof(struct readdir_list));
-		//printf("Address : %p\n",rlist_all);
-		//rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list)*no_of_elements, 0, &senderaddress, &slen);
-		//rc = recvfrom(socketb, rlist_all, sizeof(struct readdir_list), 0, &senderaddress, &slen);
-		//char buf[10000];
 		memset(readdir_buf,'\0',10000);
 		rc = recvfrom(socketb, &readdir_buf, 10000, 0, &senderaddress, &slen);
                 if (rc == 0)
@@ -364,6 +432,28 @@ int receiveresponse_client()
                 else if (rc == -1)
                         printf("recv() failed\n");
 		printf("Count : %s\n", readdir_buf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if( strcmp(COMMAND_NAME, ACCESS) == 0)
+	{
+		rc = recvfrom(socketb, &access_return, sizeof(int), 0, &senderaddress, &slen);
+		if (rc == 0)
+                        printf("Receive failed\n");
+                else if (rc == -1)
+                        printf("recv() failed\n");
+                printf("Acess Return : %d\n", access_return);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, OPEN) == 0)
+	{
+		rc = recvfrom(socketb, &open_return, sizeof(int), 0, &senderaddress, &slen);
+                if (rc == 0)
+                        printf("Receive failed\n");
+                else if (rc == -1)
+                        printf("recv() failed\n");
+                printf("Open Return : %d\n",open_return);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
