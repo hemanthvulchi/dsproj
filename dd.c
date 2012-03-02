@@ -4,7 +4,7 @@
 #include<malloc.h> 
 #include<string.h>
 #include<stdlib.h>
-
+#include "dd.h"
 node* prev = DNULL; 
 node* fold = DNULL;
 
@@ -12,7 +12,7 @@ void printdata(node* temp)
 {
 		datadef tdata;
 		tdata=temp->data;
-  	printf("\nNode Number \t:%d \nParent Node \t:%d \n File:%d \nFile Name \t:%s\nData Node \t:%s\nPath \t:%s",tdata.nno,tdata.pno,tdata.dflag,tdata.fname,tdata.dname,tdata.loc);
+  	printf("\nNode Number \t:%d \nParent Node \t:%d \n File:%d \nFile Name \t:%s\nData Node \t:%s\nPath \t:%s",tdata.nno,tdata.pno,tdata.dflag,tdata.fname,tdata.dname[0],tdata.loc);
 }
 
 /**************************************
@@ -48,7 +48,7 @@ void cstrcpy(char *sret,char* stemp,int start, int ilen)
 	}
 	else
 	{
-		while(stemp[i]!='EOS')
+		while(stemp[i]!=EOS)
 		{
 			sret[i]=stemp[start+i];
 			i++;
@@ -64,7 +64,7 @@ Function to find a first occurence character
 int findfch(char *stemp, char ctemp)
 {
 	int i=0;	
-	while(stemp[i]!='EOS')
+	while(stemp[i]!=EOS)
 	{
 		if(stemp[i]==ctemp)
 			return ++i;
@@ -133,7 +133,7 @@ new1->data.dflag=1;
 new1->data.nno=1;
 new1->data.pno=0;
 strcpy(new1->data.loc,"Root");
-strcpy(new1->data.dname,"Root");
+strcpy(new1->data.dname[0],"Root");
 strcpy(new1->data.fname,"home");
 new1->next = DNULL; 
 new1->prev = DNULL; 
@@ -318,6 +318,8 @@ int removefile(char* vpath)
 	}
 
 	next->prev=prev;	
+	free(tnode);
+	return 0;
 }
 
 
@@ -326,6 +328,8 @@ int removefold(char* vpath)
 	node* tnode;
 	node* prev;
 	node* next;
+	node* temp;
+	node* tempn;
 	tnode=search(vpath);
 	prev=tnode->prev;
 	next=tnode->next;
@@ -338,6 +342,34 @@ int removefold(char* vpath)
 		prev->next=tnode->next;
 	}
 	next->prev=prev;	
+	temp=tnode->fold;
+	while(temp->next!=DNULL)
+	{
+		if(temp->data.dflag==1)
+		{
+			tempn=temp;
+			temp=temp->next;	
+			removefold(tempn->data.loc);
+		}
+		else
+		{
+			tempn=temp;
+			temp=temp->next;	
+			removefile(tempn->data.loc);
+		}
+	}
+	if(temp->data.dflag==1)
+	{
+		tempn=temp;
+		removefold(tempn->data.loc);
+	}
+	else
+	{
+		tempn=temp;
+		removefile(tempn)->data.loc;
+	}
+
+	return 0;
 }
 
 
@@ -346,7 +378,7 @@ node *addfile(char *fname,char *dname,char *loc)
 	datadef tdata;
 	node *tnode;
 	strcpy(tdata.fname,fname);
-	strcpy(tdata.dname,dname);
+	strcpy(tdata.dname[0],dname);
 	strcpy(tdata.loc,loc);
 	tdata.dflag=0;
 	printf("\nAddfile loc:%s",loc);
@@ -359,7 +391,7 @@ node *addfolder(char *fname,char *dname,char *loc)
 	datadef tdata;
 	node *tnode;
 	strcpy(tdata.fname,fname);
-	strcpy(tdata.dname,dname);
+	strcpy(tdata.dname[0],dname);
 	strcpy(tdata.loc,loc);
 	tdata.dflag=1;
 	tnode =	addnode(loc,tdata);
