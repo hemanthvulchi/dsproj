@@ -177,7 +177,7 @@ int receivecommand_server()
 		}
 		else if(strcmp(cmd,READ)==0)
 		{
-			printf("In read\n");
+			printf("\nIn read\n");
 			char *path = strtok(NULL,",");
 			printf("Path : %s\n",path);
 			char *size = strtok(NULL,",");
@@ -231,14 +231,26 @@ int receivecommand_server()
 			char *path;
 			path = strtok(NULL,",");
 			char *mode_c = strtok(NULL,",");
+			printf("mode_c %s\n", mode_c);
 			int mode = 0;
 			if (mode_c != NULL) mode = atoi(mode_c);
 			char *rdev_c = strtok(NULL,",");
+			printf("rdev_c %s\n", rdev_c);
 			int rdev = 0;
 			if (rdev_c != NULL) rdev = atoi(rdev_c);
 			if (sendresponse_mknod(host,path,mode,rdev) == -1)
 				continue;
-		}		
+		}
+		else if(strcmp(cmd,TRUNCATE)==0)
+		{
+			printf("In truncate\n");
+			char *path;
+			path = strtok(NULL,",");
+			char *size_c = strtok(NULL,",");
+			int size = 0;
+			if (size_c != NULL) size = atoi(size_c);
+			//sendresponse_truncate(host,path,size);
+		}
 		else
 		{
 			printf("Unknown command %s\n",cmd);
@@ -249,6 +261,50 @@ int receivecommand_server()
 	return 0;
 }
 
+
+int sendresponse_truncate(char *node, char *path, int size)
+{
+        printf("Send response truncate %s %d\n", path, size);
+
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	int res = truncate(path,size);
+	
+	printf("Error # : %d\n", errno);
+	char truncatebuf[100];
+	memset(truncatebuf,'\0',100);
+	strcpy(truncatebuf,"");
+
+	char buffer[30];
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",res);
+	strcat (truncatebuf,buffer);
+	strcat (truncatebuf,",");
+
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (truncatebuf,buffer);
+	strcat (truncatebuf,",");
+	
+        int ret = sendto(socketa, &truncatebuf, strlen(truncatebuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed with 0\n");
+        else if (ret == -1) printf("send() failed with 1\n");
+	else printf("Sending response done\n");
+        close(socketa);
+        return 0;
+}
 int sendresponse_mknod(char *node, char *path, int mode, int rdev)
 {
         printf("Send response mknod %s %d %d\n", path, mode, rdev);
@@ -268,16 +324,23 @@ int sendresponse_mknod(char *node, char *path, int mode, int rdev)
         }
 
 	int res;
-	if (S_ISREG(mode))
-	{
+	//if (S_ISREG(mode))
+	//{
+		printf("hi if\n");
 		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0) res = close(res);
-	}
+/*	}
 	else if (S_ISFIFO(mode))
+	{
+		printf("hi else if\n");
 		res = mkfifo(path, mode);
+	}
 	else
+	{
+		printf("else\n");
 		res = mknod(path, mode, rdev);
-	
+	}
+	*/
 	printf("Error # : %d\n", errno);
 	char mknodbuf[100];
 	memset(mknodbuf,'\0',100);
@@ -321,6 +384,7 @@ int sendresponse_write(char *node, char *path, int size, int offset, char *buf)
 
 	char writebuf[100];
 	char buffer[30];
+	memset(buffer,'\0',30);
 	memset(writebuf,'\0',100);
 	strcpy(writebuf,"");
         int ret,res;
@@ -330,7 +394,6 @@ int sendresponse_write(char *node, char *path, int size, int offset, char *buf)
 		strcat(writebuf,"-1");
 		strcat(writebuf,",");
 
-		memset(buffer,'\0',30);
 		snprintf(buffer, 10,"%d",errno);
 		strcat (writebuf,buffer);
 	}
@@ -340,7 +403,6 @@ int sendresponse_write(char *node, char *path, int size, int offset, char *buf)
         	if (res == -1)
                 	res = -errno;
 
-		memset(buffer,'\0',30);
 		snprintf(buffer, 10,"%d",res);
 		strcat(writebuf,buffer);
 		strcat(writebuf,",");
@@ -379,32 +441,45 @@ int sendresponse_read(char *node, char *path, int size, int offset)
                 exit(1);
         }
 
-        int ret,res;
+	char readbuf[10000];
+	memset(readbuf,'\0',10000);
+	strcpy(readbuf,"");
+	char buffer[30];
+	memset(buffer,'\0',30);
+        int res;
 	int fd = open(path, O_RDONLY);
 	if (fd == -1)
-                return -errno;
+	{
+		strcat(readbuf,"-1");
+		strcat(readbuf,",");
 
-	char buf[4096];
-        res = pread(fd, buf, size, offset);
-        if (res == -1)
-                res = -errno;
-        close(fd);
-	printf("buf : %s\n",buf);
+		snprintf(buffer, 10,"%d",errno);
+		strcat (readbuf,buffer);
+	}
+	else
+	{
+		char buf[4096];
+		memset(buf,'\0',4096);
+        	res = pread(fd, buf, size, offset);
+        	close(fd);
+		printf("buf : %s\n",buf);
 
-        res = -errno;
-        ret = sendto(socketa, &buf, strlen(buf), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
+		snprintf(buffer, 10,"%d",res);
+		strcat(readbuf,buffer);
+		strcat(readbuf,",");
 
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",errno);
+		strcat(readbuf,buffer);
+		strcat(readbuf,",");
+
+		strcat(readbuf,buf);
+	}
+        int ret = sendto(socketa, &readbuf, strlen(readbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+	else printf("Sending response done\n");
+	printf("Buffer %s\n",readbuf);
         close(socketa);
 	return 0;
 }
@@ -427,29 +502,35 @@ int sendresponse_open(char *node, char *path, int flags)
                 exit(1);
         }
 
-        int ret;
+	char openbuf[100];
+	memset(openbuf,'\0',100);
+	strcpy(openbuf,"");
+	char buffer[30];
+	memset(buffer,'\0',30);
         int res = open(path, flags);
         if (res == -1)
         {
-                res = -errno;
-                ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
+		strcat(openbuf,"-1");
+		strcat(openbuf,",");
+
+		snprintf(buffer, 10,"%d",errno);
+		strcat (openbuf,buffer);
         }
         else
 	{
-                ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
 		close(res);
+		snprintf(buffer, 10,"%d",res);
+		strcat(openbuf,buffer);
+		strcat(openbuf,",");
+
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",errno);
+		strcat (openbuf,buffer);
 	}
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
+        int ret = sendto(socketa, &openbuf, strlen(openbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+	else printf("Sending response done\n");
 
 	close(socketa);
         return 0;
@@ -475,28 +556,25 @@ int sendresponse_access(char *node, char *path, int mask)
 	int ret;
 	int res;
         res = access(path, mask);
-        if (res == -1)
-	{
-		res = -errno;
-		ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
-                return -errno;	
-	}
-	else
-	{
-		ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
-	}
-	if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
 
+	char accessbuf[100];
+	memset(accessbuf,'\0',100);
+	strcpy(accessbuf,"");
+	char buffer[30];
+	memset(buffer,'\0',30);
+
+	snprintf(buffer,10,"%d",res);
+	strcat(accessbuf,buffer);
+	strcat(accessbuf,",");
+	
+	memset(buffer,'\0',30);
+	snprintf(buffer,10,"%d",errno);
+	strcat(accessbuf,buffer);
+
+	ret = sendto(socketa, &accessbuf, strlen(accessbuf), 0, &sendaddress, slen);
+	if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+        printf("Sending response done\n");
         close(socketa);
         return 0;
 }
@@ -523,52 +601,51 @@ int sendresponse_readdir(char *node, char *path)
 	DIR *dp = NULL;
 	struct dirent *de = NULL;
 	
-	dp = opendir(path);
-	//dp = opendir("/tmp/shyam-fuse");
-	printf("I am here\n");
-	if (dp == NULL)
-	{
-		printf("DP == Null\n");
-		return -errno;
-	}
-	printf("I am here\n");
-
-	
 	char listfiles[10000];
 	memset(listfiles,'\0',10000);
 	strcpy(listfiles,"");
-	while ((de = readdir(dp)) != NULL)
+
+	char buffer[30];
+	dp = opendir(path);
+	if (dp == NULL)
 	{
-		printf("d_name %s\n",de->d_name);
-		printf("d_type %d\n",de->d_type);
-		printf("d_ino %d\n",de->d_ino);
-		strcat(listfiles,de->d_name);
-		strcat(listfiles,",");
-		char buffer[30];
+		printf("DP == Null\n");
 		memset(buffer,'\0',30);
-		snprintf(buffer, 10,"%d",de->d_type);
+		snprintf(buffer, 10,"%d",errno);
 		strcat(listfiles, buffer);
 		strcat(listfiles, ",");
-		//strcpy(buffer,"");
-		memset(buffer,'\0',30);
-		snprintf(buffer, 10,"%d",de->d_ino);
-		strcat(listfiles, buffer);
-		strcat(listfiles,",");
+		
 	}
-	closedir(dp);
+	else
+	{
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",errno);
+		strcat(listfiles, buffer);
+		strcat(listfiles, ",");
+		while ((de = readdir(dp)) != NULL)
+		{
+			printf("d_name %s\n",de->d_name);
+			printf("d_type %d\n",de->d_type);
+			printf("d_ino %d\n",de->d_ino);
+			strcat(listfiles,de->d_name);
+			strcat(listfiles,",");
+			memset(buffer,'\0',30);
+			snprintf(buffer, 10,"%d",de->d_type);
+			strcat(listfiles, buffer);
+			strcat(listfiles, ",");
+
+			memset(buffer,'\0',30);
+			snprintf(buffer, 10,"%d",de->d_ino);
+			strcat(listfiles, buffer);
+			strcat(listfiles,",");
+		}
+		closedir(dp);
+	}
 	printf("Am I here\n");
 	int ret = sendto(socketa, listfiles, strlen(listfiles), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+        else printf("Sending response done\n");
 	
         close(socketa);
         return 0;
@@ -655,17 +732,17 @@ int sendresponse_getattr(char *node, char *path)
 	else
 	{
 		printf("sendresp get atrr: else part\n");
-		//printf("sendresp get atrr: else part:%s\n",st);
 		char buffer[30];
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",res);
 		strcat(gattr_b, buffer);//res
 		strcat(gattr_b, ",");
-		printf("After res\n");
 
-		strcat(gattr_b,"0");//mode
+        	memset(buffer,'\0',30);
+		snprintf(buffer,10,"%d",errno);
+		strcat(gattr_b, buffer);//errno
 		strcat(gattr_b, ",");
-		
+
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",st.st_mode);
 		strcat(gattr_b,buffer);//mode
@@ -733,17 +810,9 @@ int sendresponse_getattr(char *node, char *path)
 	}
 	// I should load contents in st before I send..
         int ret = sendto(socketa, &gattr_b, strlen(gattr_b), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+        else printf("Sending response done\n");
         //shutdown(socketa,2);
 	close(socketa);
         return 0;
@@ -784,57 +853,47 @@ int receiveresponse_client()
 		memset(getattr_buf,'\0',1000);
         	printf("Waiting to receive Getattr\n");
         	rc = recvfrom(socketb, &getattr_buf, 1000, 0, &senderaddress, &slen);
-        	if (rc == 0)
-        		printf("Receive failed\n");
-        	else if (rc == -1)
-        		printf("recv() failed\n");
+        	if (rc == 0) printf("Receive failed\n");
+        	else if (rc == -1) printf("recv() failed\n");
+		printf("Getattrbuf : %s\n", getattr_buf);
         	getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
         	printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
-                //printf("Received packet from %s : %d bytes\nData: %s\n\n",inet_ntoa(senderaddress.sin_addr), ntohs(senderaddress.sin_port), buf1);
 	}
 	else if (strcmp(COMMAND_NAME, READDIR)==0)
 	{
 		printf("Readdir client receive\n");
 		memset(readdir_buf,'\0',10000);
 		rc = recvfrom(socketb, &readdir_buf, 10000, 0, &senderaddress, &slen);
-                if (rc == 0)
-                        printf("Receive failed\n");
-                else if (rc == -1)
-                        printf("recv() failed\n");
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
 		printf("Count : %s\n", readdir_buf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
-	else if( strcmp(COMMAND_NAME, ACCESS) == 0)
+	else if (strcmp(COMMAND_NAME, ACCESS) == 0)
 	{
-		rc = recvfrom(socketb, &access_return, sizeof(int), 0, &senderaddress, &slen);
-		if (rc == 0)
-                        printf("Receive failed\n");
-                else if (rc == -1)
-                        printf("recv() failed\n");
-                printf("Acess Return : %d\n", access_return);
+		rc = recvfrom(socketb, &access_retbuf, 100, 0, &senderaddress, &slen);
+		if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Acess Return : %s\n", access_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
 	else if (strcmp(COMMAND_NAME, OPEN) == 0)
 	{
-		rc = recvfrom(socketb, &open_return, sizeof(int), 0, &senderaddress, &slen);
-                if (rc == 0)
-                        printf("Receive failed\n");
-                else if (rc == -1)
-                        printf("recv() failed\n");
-                printf("Open Return : %d\n",open_return);
+		rc = recvfrom(socketb, &open_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Open Return : %s\n",open_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
 	else if (strcmp(COMMAND_NAME, READ) == 0)
 	{
-		rc = recvfrom(socketb, &read_buf, 4096, 0, &senderaddress, &slen); //4096 because I am hardcoding read_buf to 4096 in global.h
-                if (rc == 0)
-                        printf("Receive failed\n");
-                else if (rc == -1)
-                        printf("recv() failed\n");
-                printf("Read Return : %s\n",read_buf);
+		rc = recvfrom(socketb, &read_retbuf, 10000, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Read Return : %s\n",read_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
@@ -853,6 +912,15 @@ int receiveresponse_client()
                 if (rc == 0) printf("Receive failed\n");
                 else if (rc == -1) printf("recv() failed\n");
                 printf("Mknod Return : %s\n",mknod_retbuf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, TRUNCATE) == 0)
+	{
+		rc = recvfrom(socketb, &truncate_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Truncate Return : %s\n",truncate_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
