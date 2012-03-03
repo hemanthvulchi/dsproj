@@ -65,16 +65,13 @@ static int my_getattr(const char *path, struct stat *stbuf)
 
 	char *resv = strtok(getattr_buf,",");
 	res = atoi(resv);
+	char *err = strtok(NULL,",");
+	errno = atoi(err);
 	if (res == -1)
 	{
-		char *err = strtok(NULL,",");
-		errno = atoi(err);
 		return -errno;
 	}
 
-	char *err = strtok(NULL,",");
-	errno = atoi(err);
-	printf("Errno : %d\n", errno);
 	char *tmp;
 	tmp = strtok(NULL,",");
 	stbuf->st_mode = atoi(tmp);
@@ -138,17 +135,17 @@ static int xmp_access(const char *path, int mask)
 {
 	printf("\n\nI am in access\n\n");
 	printf("\n\n\nFirst funtion to use\n\n\n");
-	int res = 0;
 
 	printf("Path : %s\n",path);
 	char my_path[100];
-        //strcpy(my_path,"/tmp/shyam-fuse");
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
-	if (strcmp(path,"/") != 0)
+	//if (strcmp(path,"/") != 0)
 	{
 		pthread_t recvcmd_thread;
+		COMMAND_NAME = malloc (1+sizeof(char)*strlen(ACCESS));
+       		strcpy(COMMAND_NAME, ACCESS);
         	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
         	if (cmd_rc)
         	{
@@ -157,8 +154,6 @@ static int xmp_access(const char *path, int mask)
                 	exit(1);
         	}
 
-		COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
-       		strcpy(COMMAND_NAME, GETATTR);
 		char buffer[30];
                 memset(buffer,'\0',30);
                 snprintf(buffer, 10,"%d",mask);
@@ -174,12 +169,17 @@ static int xmp_access(const char *path, int mask)
 		printf("Waiting for pthread join\n");
 		pthread_join(recvcmd_thread, NULL);
        		free(COMMAND_NAME);
-		res = access_return;
 	}
-	//res = access(path, mask);
+	printf("After pthread join\n");
+	char *ptr = strtok(access_retbuf,",");
+	if (ptr == NULL) printf("watha res\n");
+	int res = atoi(ptr);
+
+	ptr = strtok(NULL,",");
+	if ( ptr == NULL) printf("watha errno\n");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
-	
 	return 0;
 }
 
@@ -208,7 +208,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	// I have to send the path from here to the namenode..
 	// Get back the list of files..
-	COMMAND_NAME = malloc (1+sizeof(char)*strlen(GETATTR));
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(READDIR));
         strcpy(COMMAND_NAME, READDIR);
 	pthread_t recvcmd_thread;
         int cmd_rc = 0;
@@ -235,6 +235,8 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 
 	char *val = strtok(readdir_buf,",");
+	errno = atoi(val);
+	val = strtok(NULL,",");
 	while (val != NULL) {
 		struct stat st;
 		memset(&st, 0, sizeof(st));
@@ -260,7 +262,7 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 	int res;
 
 	char my_path[100];
-        //strcpy(my_path,"/tmp/shyam-fuse");
+	memset(my_path,'\0',100);
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 	printf("Path : %s\n", path);
@@ -277,6 +279,17 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
                 free(COMMAND_NAME);
                 exit(1);
         }
+	char buffer[30];
+	memset(buffer,'\0',30);
+	strcat(my_path,",");
+	snprintf(buffer,10,"%d",mode);
+	strcat(my_path,buffer);
+	strcat(my_path,",");
+	memset(buffer,'\0',30);
+	snprintf(buffer,10,"%d",rdev);
+	strcat(my_path,buffer);
+	strcat(my_path,",");
+	printf("MyPath %s\n", my_path);
 	if (sendcommand(namenode, my_path, MKNOD) == -1)
         {
 		printf("Send command failed\n");
@@ -441,12 +454,52 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 static int xmp_truncate(const char *path, off_t size)
 {
 	printf("\n\ntruncate\n\n");
+	printf("path : %s\n",path);
+	printf("size %d\n",size);
 	int res;
 
-	res = truncate(path, size);
+	char my_path[100];
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+
+	// I have to send the path from here to the namenode..
+	// Get back the list of files..
+	/*
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(TRUNCATE));
+        strcpy(COMMAND_NAME, TRUNCATE);
+	pthread_t recvcmd_thread;
+        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc != 0)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	char buffer[30];
+	memset(buffer,'\0',30);
+	snprintf(buffer,10,"%d",size);
+	strcat(my_path,buffer);
+	strcat(my_path,",");
+	if (sendcommand(namenode, my_path, TRUNCATE) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+	*/
+	//res = truncate(path, size);
+
+	char *ptr = strtok(truncate_retbuf,",");
+	res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+
 	if (res == -1)
 		return -errno;
-
 	return 0;
 }
 
@@ -475,7 +528,6 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
-	int res;
 	printf("Fi flags %d\n", fi->flags);
 
 	// I have to send the path from here to the namenode..
@@ -509,7 +561,10 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
         free(COMMAND_NAME);
         printf("End of command\n");
 
-	res = open_return;
+	char *ptr = strtok(open_retbuf,",");
+	int res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
 	return 0;
@@ -520,6 +575,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
 	printf("\n\nI am in read\n\n");
 	printf("Path : %s\n",path);
 	printf("Buf : %s\n", buf);
+	printf("Size : %d\n", size);
 	printf("Offset : %d\n", offset);
 
 	char my_path[100];
@@ -545,6 +601,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
         memset(buffer,'\0',30);
         strcat(my_path,",");
         snprintf(buffer, 10,"%d",size);
+	strcat(my_path,buffer);
         strcat(my_path,",");
         snprintf(buffer, 10,"%d",offset);
         strcat(my_path,buffer);
@@ -574,14 +631,22 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
 		res = -errno;
 	
 	close(fd);*/
-	printf("Read Buf : %s\n",read_buf);
-	//free(buf);
-	//buf = malloc (strlen(read_buf)+1);
-	//strcat(buf,"");
-	strcpy(buf,read_buf);
-	res = strlen(read_buf);
-        if (res == -1)
-                return -errno;
+
+	printf("before ptr\n");
+	char *ptr = strtok(read_retbuf,",");
+	printf("after  ptr\n");
+	res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+	printf("res : %d\n", res);
+	printf("errno : %d\n", errno);
+	if (res == -1)
+	{
+		return -errno;
+	}
+	ptr = strtok(NULL,",");
+	printf("buf : %s\n",ptr);
+	if(ptr != NULL) strcpy(buf,ptr);
 	
 	return res;
 }
@@ -592,7 +657,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	printf("\n\nI am in write\n\n");
 	printf("Path : %s\n",path);
         printf("Buf : %s\n", buf);
-        printf("Size : %s\n", size);
+        printf("Size : %d\n", size);
         printf("Offset : %d\n", offset);
 
         char my_path[10000];
@@ -616,12 +681,14 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         memset(buffer,'\0',30);
         strcat(my_path,",");
         snprintf(buffer, 10,"%d",size);
+	strcat(my_path,buffer);
         strcat(my_path,",");
+	memset(buffer,'\0',30);
         snprintf(buffer, 10,"%d",offset);
         strcat(my_path,buffer);
 	strcat(my_path,",");
 	strcat(my_path,buf);
-
+	printf("Mypath, %s\n",my_path);
         if (sendcommand(namenode, my_path, WRITE) == -1)
         {
                 printf("Send command failed\n");

@@ -10,6 +10,7 @@
 #define READDIR "readdir"
 #define MKDIR "mkdir"
 #define MKNOD "mknod"
+#define TRUNCATE "truncate"
 #define OPEN "open"
 #define READ "read"
 #define WRITE "write"
@@ -23,10 +24,11 @@ char getattr_buf[1000];
 //struct readdir_list *rlist_all[1024];
 struct readdir_list *rlist_all;
 char readdir_buf[10000];
-int access_return = 0;
-int open_return = 0;
-char read_buf[4096];
+char access_retbuf[100];
+char open_retbuf[100];
+char read_retbuf[4096];
 char write_retbuf[100];
 char mknod_retbuf[100];
+char truncate_retbuf[100];
 char mkdir_buf;
 #endif
