@@ -258,8 +258,33 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
         strcat(my_path,path);
 	printf("Path : %s\n", path);
 
+	// I have to send the path from here to the namenode..
+	// Get back the list of files..
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(MKNOD));
+        strcpy(COMMAND_NAME, MKNOD);
+	pthread_t recvcmd_thread;
+        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc != 0)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	if (sendcommand(namenode, my_path, MKNOD) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+
+	
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
 	   is more portable */
+	/*
 	if (S_ISREG(mode)) {
 		res = open(my_path, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
@@ -269,6 +294,12 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 		res = mkfifo(my_path, mode);
 	else
 		res = mknod(my_path, mode, rdev);
+	*/
+
+	char *ptr = strtok(mknod_retbuf,",");
+	res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
 
@@ -561,7 +592,6 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
-	int res;
 	// I have to send the path from here to the namenode..
         // Get back the list of files..
         COMMAND_NAME = malloc (1+sizeof(char)*strlen(WRITE));
@@ -597,7 +627,11 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         free(COMMAND_NAME);
         printf("End of command\n");
 
-	res = write_return;
+	char *ptr = strtok(write_retbuf,",");
+	int res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+
 	if (res == -1)
 		res = -errno;
 	/*
