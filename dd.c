@@ -4,6 +4,7 @@
 #include<malloc.h> 
 #include<string.h>
 #include<stdlib.h>
+#include "global.h"
 #include "dd.h"
 node* prev = DNULL; 
 node* fold = DNULL;
@@ -379,6 +380,7 @@ node *addfile(char *fname,char *dname,char *loc)
 	node *tnode;
 	strcpy(tdata.fname,fname);
 	strcpy(tdata.dname[0],dname);
+	tdata.dsync[0]=1;
 	strcpy(tdata.loc,loc);
 	tdata.dflag=0;
 	printf("\nAddfile loc:%s",loc);
@@ -392,11 +394,95 @@ node *addfolder(char *fname,char *dname,char *loc)
 	node *tnode;
 	strcpy(tdata.fname,fname);
 	strcpy(tdata.dname[0],dname);
+	tdata.dsync[0]=1;
 	strcpy(tdata.loc,loc);
 	tdata.dflag=1;
 	tnode =	addnode(loc,tdata);
 	return tnode;
 }
+
+
+char *getdatanode(char* path,char* host)
+{
+//	node *tnode;
+//	tnode=search(path);
+//	return tnode->data.dname[0];	
+	return "lisp.rutgers.edu";
+}
+
+
+////////////////////
+int storelist(node* thead,char* fpath)
+{
+	FILE *ifp, *ofp;
+	char *mode = "r";
+	char outputFilename[] = "data1.txt";
+    int iFlno, iFrn;
+    char sFfname[100], sFdn[100];
+    	char buffer[1000];
+	ifp = fopen("data.txt", "a+");
+	printf("Store list")'
+	if (ifp == NULL) 
+	{
+					fprintf(stderr, "Can't open input file in.list!\n");
+		exit(1);
+	}
+
+	recursestore(ifp,head);
+/*	
+	while (fscanf(ifp, "%d %s %s %d", &iFlno,sFfname, sFdn,&iFrn) != EOF) 
+	{
+		   fprintf(ofp, "%d %s %s %d\n", iFlno,sFfname, sFdn,iFrn);
+	}	
+*/	
+
+    fclose(ifp);
+	return 0;
+}
+
+void recursestore(FILE* tfp, node* tnode)
+{
+ 	char buffer[1000];
+ 	char tbuff[1000];
+	int i=0;		
+	memset(buffer,'\0',1000);
+	memset(tbuff,'\0',1000);
+	snprintf(tbuff,10,"%d",tnode->data.nno);
+	strcat(buffer,tbuff);
+	strcat(buffer,",");
+	memset(tbuff,'\0',1000);
+	snprintf(tbuff,10,"%d",tnode->data.pno);
+	strcat(buffer,tbuff);
+	strcat(buffer,",");
+	strcat(buffer,tnode->data.fname);
+	strcat(buffer,",");
+	for(i=0;i<REP;i++)
+	{
+		strcat(buffer,tnode->data.dname[i]);
+		strcat(buffer,",");
+	}
+	strcat(buffer,tnode->data.loc);
+	strcat(buffer,",");	
+	memset(tbuff,'\0',1000);
+	snprintf(tbuff,10,"%d",tnode->data.dflag);;
+	strcat(buffer,tbuff);
+	strcat(buffer,",");
+	for(i=0;i<REP;i++)
+	{
+		memset(tbuff,'\0',1000);
+		snprintf(tbuff,10,"%d",tnode->data.dsync[REP]);
+		strcat(buffer,tbuff);
+		strcat(buffer,",");	
+	}
+		strcat(buffer,"ENDD\n");	
+		fprintf(tfp, "%s", buffer);
+		if(tnode->fold!=NULL)
+			recursestore(tnode->fold,tfp);
+		if(tnode->next!=NULL)
+			recursestore(tnode->next,tfp);			
+	
+}
+
 
 int dummymain() 
 { 
@@ -419,6 +505,7 @@ fnode=addfile("file3","dpath3","home/fold1");
 printdata(fnode);
 fnode=search("home/fold1/file3");
 printdata(fnode);
+storelist(head,"dummy");
 free(nnode);
 free(head);
 printf("\n");

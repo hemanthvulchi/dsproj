@@ -1,10 +1,10 @@
 CFLAGS = -Wall -DFUSE_USE_VERSION=26 `pkg-config fuse --cflags`
 LINKFLAGS = -Wall `pkg-config fuse --libs`
 
-all: hello my_client my_namenode my_datanode
+all: hello my_client my_namenode my_datanode my_testfs
 
 clean:
-	rm -rf hello my_client my_namenode my_datanode *.o
+	rm -rf hello my_client my_namenode my_datanode my_testfs *.o
 
 hello: hello.o 
 	gcc -g $(LINKFLAGS) -o hello hello.o -w
@@ -29,3 +29,9 @@ my_datanode: my_datanode.o
 
 my_datanode.o: datanode.c
 	gcc -g $(CFLAGS) -c datanode.c -o my_datanode.o -w
+
+my_testfs: my_testfs.o
+	gcc -g $(LINKFLAGS) -o my_testfs my_testfs.o -w
+
+my_testfs.o: testfs.c
+	gcc -g $(CFLAGS) -c testfs.c -o my_testfs.o -w

@@ -1,5 +1,5 @@
 /*
-*	This file has Datanode main and other functionalities
+*	This file has Namenode main and other functionalities
 *	This is to be executed in the namenode server
 */
 #include <stdio.h>
@@ -8,52 +8,40 @@
 #include <stdlib.h>
 #include "global.h"
 #include "ping.c"
+#include "list.c"
 #include "socket_command.c"
+#include "dd.h"
+#include "dd.c"
 
-char *namenode;
+
+// Its not already init, its the big init..
+// All of heamnath's code will go in here..
+void init()
+{
+	//Initialize all the linked lists.. Just warm up.. :)
+
+//	initfilelist();
+	//initdatanodelist();
+    
+
+	//Load data from files, this only applies during recovery..
+}
 
 int main(int argc, char *argv[])
 {
-	//USAGE
-        if(argc < 2)
-        {
-                printf("\nUSAGE : %s <namenode-name>\n\n",argv[0]);
-                exit(1);
-        }
-
-	// Check namenode details here - return -1 for error..
-        namenode = malloc (strlen(argv[1])*sizeof(char)+1);
-        // Ping namenode and check if it is valid.
-        if(sendping(argv[1]) == -1)
-                return -1;
-        printf("Ping success\n");
-        strcpy(namenode,argv[1]);
-
-
-	// Initial Conditions.. System will have a ping mechanism and can serve requests.
 	pthread_t recvping_thread;
 	int ping_rc = pthread_create(&recvping_thread, NULL, receiveping, NULL);
+
         if (ping_rc)
         {
                 printf("receive ping thread create error\n");
                 exit(1);
         }
-
-	// Datanode should contact namenode and let him know that he is available.
-	// Send a message to namenode.
-	if (sendcommand(namenode, "", DATANODE) == -1)
-        {
-                //free(COMMAND_NAME);
-		printf("Namenode contact failed\n");
-                exit(1);
-        }
-	
-	// Another fuctionality is to constantly wait for commands from the namenode.
 	pthread_t recvcmd_thread;
-	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receivecommand_server, NULL);
+	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receivecommand_datanode, NULL);
 	if (cmd_rc)
 	{
-		printf("Name node not to able to initiate receive comamnd thread\n");
+		printf("Data node not to able to initiate receive comamnd thread\n");
 		exit(1);
 	}
 
@@ -64,6 +52,6 @@ int main(int argc, char *argv[])
 	{
 		pthread_yield(NULL);
 	}
-	printf("End of main\n");
 	return 0;
+
 }
