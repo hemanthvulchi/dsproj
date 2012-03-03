@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include "global.h"
+#include "dd.h"
 #include "network_common.c"
 
 #include <dirent.h>
@@ -28,7 +29,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "list.c"
-
+#include "dd.c"
 
 // -1 - Failure 
 int sendcommand(char *node, char *path, char *cmd)
@@ -308,6 +309,530 @@ int receivecommand_server()
 	shutdown(socketb,2);
 	return 0;
 }
+
+/****************************************************
+*****************************************************
+Receive for Namenode
+*****************************************************/
+
+int receivecommand_namenode()
+{
+	printf("Receive namenode\n");
+	struct sockaddr_in receiveaddress, senderaddress;
+	char *dpath=NULL;
+	// create Non-Blocking socket to send message
+        int socketb = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (socketb == -1)
+	{
+		printf("Socket Error\n");
+		return -1;
+	}
+
+        // set address to local address
+        unsigned long lNB = 1; // Non-Blocking socket
+        ioctl(socketb, 0, &lNB);
+        receiveaddress.sin_addr.s_addr = htonl(INADDR_ANY);
+        receiveaddress.sin_family = AF_INET;
+        receiveaddress.sin_port = htons(COMMAND_PORT);
+        if (bind(socketb,&receiveaddress, sizeof(receiveaddress)) > 0)
+	{
+		printf("Bind error\n");
+		exit(1);
+	}
+
+        // receive message
+  char buf1[1000];
+  char buf2[1000];
+	memset (buf1,'\0',1000);
+	int slen = sizeof(senderaddress);
+	int rc = 0;
+	char host[100];
+	char serv[100];
+	char *cmd;
+	while (1)
+	{
+		printf("Waiting to receive - Namenode\n");
+		memset(buf1,'\0',1000);
+	
+				strcpy(buf2,buf1);        	
+        	rc = recvfrom(socketb, buf1, 1000, 0, &senderaddress, &slen);
+
+        	if (rc == 0)
+        		printf("Receive failed\n");
+        	else if (rc == -1)
+        		printf("recv() failed\n");
+
+		getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+		printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+			memset(buf2,'\0',1000);
+			strcpy(buf2,"");
+			strcat(buf2,host);
+			strcat(buf2,",");
+			strcat(buf2,buf1);
+			printf("Buf 1 %s\n",buf1);
+			printf("Printing buffer storage %s",buf2);
+		cmd = strtok(buf1,",");
+		printf("REceived cmd %s\n",cmd);
+		
+		printf("\nSocket Command: command recieved:%s",cmd);
+		//Write some breaking function here..
+		// As of now, Idea is to keep waiting, if u want to break.. set a variable somewhere.. notify some node, which will ping back in acknowledgement..
+		// This will make me reach this point from recvfrom.. and i will do a break here..
+		if (strcmp(cmd,GETATTR)==0)
+		{
+     		printf("\nSocket Command: in GETATTR");
+			char *path;
+			path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+
+			printf("User is trying to access something..%s \n",dpath);
+			      if (sendcommand(dpath, buf2, GETATTR) == -1)
+        {
+                printf("Send command to datanode failed\n");
+                return -1;
+        }
+			//printf("What do I do, naan enna seyya.. \n");
+			//May be intimate some process.
+			printf("I am here\n");
+		}
+		else if (strcmp(cmd,DATANODE)==0)
+		{
+			//Now add it to the linked list in namenode..
+			char _ip[100];
+        		if (hostname_to_ip(host, _ip) == -1)
+                		return -1;
+			datanode_insert(host,_ip);
+			datanode_display();
+		}
+		else if (strcmp(cmd,ACCESS)==0)
+		{
+			char *path;
+      path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			char *mask = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("User is trying to access something..%s \n",dpath);
+	      if (sendcommand(dpath, buf2, ACCESS) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+				
+		}
+		else if(strcmp(cmd,READDIR)==0)
+		{
+			printf("In readdir\n");
+			char *path = NULL;
+			path = strtok(NULL, ",");
+			printf("Path : %s\n",path);
+			dpath = getdatanode(path,host);
+			printf("Doing a Readdir.. \n");
+	      if (sendcommand(dpath, buf2, READDIR) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		else if(strcmp(cmd,OPEN)==0)
+		{
+			printf("In open\n");
+			char *path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			dpath = getdatanode(path,host);
+			printf("Open file.. \n");
+	      if (sendcommand(dpath, buf2, OPEN) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+
+		}
+		else if(strcmp(cmd,READ)==0)
+		{
+			printf("\nIn read\n");
+			char *path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("User is trying Read.. \n");
+	      if (sendcommand(dpath, buf2, READ) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		else if(strcmp(cmd,WRITE)==0)
+    {
+      printf("In write\n");
+      char *path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("Write!!!!!!!!!!!!.. \n");
+      if (sendcommand(dpath, buf2, WRITE) == -1)
+      {
+          printf("Send command to datanode failed\n");
+					continue;
+      }
+    }
+		else if(strcmp(cmd,MKDIR)==0)
+		{
+			printf("In MKDIR\n");
+			char *path;
+			path = strtok(NULL, ",");
+			printf("mkdir found path path:%s\n",path);
+			dpath = getdatanode(path,host);
+			printf("I am making a dir.. dpath:%s\n",dpath);
+	      if (sendcommand(dpath, buf2, MKDIR) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		else if(strcmp(cmd,MKNOD)==0)
+		{
+			printf("In mknod\n");
+			char *path;
+			path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("Making Node.... \n");
+	      if (sendcommand(dpath, buf2, MKNOD) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+
+		}
+		else if(strcmp(cmd,TRUNCATE)==0)
+		{
+			printf("In truncate\n");
+			char *path;
+			path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("Truncate .... \n");
+	      if (sendcommand(dpath, buf2, TRUNCATE) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		else if(strcmp(cmd,UNLINK)==0)
+		{
+			printf("In unlink\n");
+			char *path;
+			path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("Yeah i am unlinking.. \n");
+	      if (sendcommand(dpath, buf2, UNLINK) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+
+		}
+		else if(strcmp(cmd,RMDIR)==0)
+		{
+			printf("In rmdir\n");
+			char *path;
+			path = strtok(NULL,",");
+			dpath = getdatanode(path,host);
+			printf("Remove Directory.. \n");
+	      if (sendcommand(dpath, buf2, RMDIR) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		/*
+		else if(strcmp(cmd,STATFS)==0)
+		{
+			printf("In statfs\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_statfs(host,path);
+		}*/
+		else if(strcmp(cmd,CHMOD)==0)
+		{
+			printf("In CHMOD\n");
+			char *path;
+			path = strtok(NULL, ",");
+			dpath = getdatanode(path,host);
+			printf("Changing permission.. \n");
+	      if (sendcommand(dpath, buf2, CHMOD) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+
+		}
+
+		else if(strcmp(cmd,RENAME)==0)
+		{
+			printf("In RENAME\n");
+			char *path;
+			char *dpath;
+			path = strtok(NULL, ",");
+			dpath = getdatanode(path,host);
+			printf("Renaming a file.. \n");
+	      if (sendcommand(dpath, buf2, RENAME) == -1)
+        {
+                printf("Send command to datanode failed\n");
+								continue;
+        }
+		}
+		else
+		{
+			printf("Unknown command %s\n",cmd);
+		}
+		cmd = NULL;
+	}
+	shutdown(socketb,2);
+	return 0;
+}
+
+/***************************************************
+****************************************************
+This would run on the datanode
+
+****************************************************/
+int receivecommand_datanode()
+{
+	printf("Receive datanode\n");
+	struct sockaddr_in receiveaddress, senderaddress;
+	
+	// create Non-Blocking socket to send message
+        int socketb = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (socketb == -1)
+	{
+		printf("Socket Error\n");
+		return -1;
+	}
+
+        // set address to local address
+        unsigned long lNB = 1; // Non-Blocking socket
+        ioctl(socketb, 0, &lNB);
+        receiveaddress.sin_addr.s_addr = htonl(INADDR_ANY);
+        receiveaddress.sin_family = AF_INET;
+        receiveaddress.sin_port = htons(COMMAND_PORT);
+        if (bind(socketb,&receiveaddress, sizeof(receiveaddress)) > 0)
+	{
+		printf("Bind error\n");
+		exit(1);
+	}
+
+        // receive message
+        char buf1[1000];
+	memset (buf1,'\0',1000);
+	int slen = sizeof(senderaddress);
+	int rc = 0;
+	char host[100];
+	char *tmphost;
+	char namehost[100];	
+	char serv[100];
+	char *cmd;
+	while (1)
+	{
+		printf("Waiting to receive\n");
+		memset(buf1,'\0',1000);
+        	rc = recvfrom(socketb, buf1, 1000, 0, &senderaddress, &slen);
+        	if (rc == 0)
+        		printf("Receive failed\n");
+        	else if (rc == -1)
+        		printf("recv() failed\n");
+		tmphost = strtok(buf1,",");
+		tmphost = strtok(NULL,",");
+		strcpy(host,tmphost);
+		cmd = strtok(NULL,",");
+		printf("REceived cmd %s host:%s temphost:%s\n ",cmd,host,tmphost);
+
+		getnameinfo(&senderaddress, slen, namehost, sizeof(namehost), serv, sizeof(serv), 0);
+		printf("Command received from %s, host %s, client:%s\n",inet_ntoa(senderaddress.sin_addr),namehost,host);
+		printf("\nSocket Command: command recieved:%s",cmd);
+		//Write some breaking function here..
+		// As of now, Idea is to keep waiting, if u want to break.. set a variable somewhere.. notify some node, which will ping back in acknowledgement..
+		// This will make me reach this point from recvfrom.. and i will do a break here..
+		if (strcmp(cmd,GETATTR)==0)
+		{
+     		printf("\nSocket Command: in GETATTR");
+			char *path;
+			path = strtok(NULL,",");
+			printf("User is trying to access something.. \n");
+			//printf("What do I do, naan enna seyya.. \n");
+			//May be intimate some process.
+			if(sendresponse_getattr(host, path) == -1)
+			{
+				continue;
+			}
+			printf("I am here\n");
+		}
+		else if (strcmp(cmd,DATANODE)==0)
+		{
+			//Now add it to the linked list in namenode..
+			char _ip[100];
+        		if (hostname_to_ip(host, _ip) == -1)
+                		return -1;
+			datanode_insert(host,_ip);
+			datanode_display();
+		}
+		else if (strcmp(cmd,ACCESS)==0)
+		{
+			char *path;
+                        path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			char *mask = strtok(NULL,",");
+			if (sendresponse_access(host,path,atoi(mask)) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,READDIR)==0)
+		{
+			printf("In readdir\n");
+			char *path = NULL;
+			path = strtok(NULL, ",");
+			printf("Path : %s\n",path);
+			if (sendresponse_readdir(host,path) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,OPEN)==0)
+		{
+			printf("In open\n");
+			char *path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			char *flags = strtok(NULL,",");
+			printf("Flags %s\n",flags);
+			if (sendresponse_open(host,path,atoi(flags)) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,READ)==0)
+		{
+			printf("\nIn read\n");
+			char *path = strtok(NULL,",");
+			printf("Path : %s\n",path);
+			char *size = strtok(NULL,",");
+			printf("Size : %s\n",size);
+			int sz;
+			if (size == NULL)
+				sz = 0;
+			else
+				sz = atoi(size);
+			char *offset = strtok(NULL,",");
+			printf("Offset : %s\n", offset);
+			int off;
+			if ( offset == NULL)
+				off = 0;
+			else
+				off = atoi(offset);
+			if (sendresponse_read(host,path,sz,off) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,WRITE)==0)
+                {
+                        printf("In write\n");
+                        char *path = strtok(NULL,",");
+                        printf("Path : %s\n",path);
+                        char *size = strtok(NULL,",");
+                        printf("Size : %s\n",size);
+                        int sz;
+                        if (size == NULL) sz = 0;
+                        else sz = atoi(size);
+                        char *offset = strtok(NULL,",");
+                        printf("Offset : %s\n", offset);
+                        int off;
+                        if (offset == NULL) off = 0;
+                        else off = atoi(offset);
+			char *w_buf = strtok(NULL,",");
+                        if (sendresponse_write(host,path,sz,off,w_buf) == -1)
+                                continue;
+                }
+		else if(strcmp(cmd,MKDIR)==0)
+		{
+			printf("In MKDIR\n");
+			char *path;
+			path = strtok(NULL, ",");
+			printf("mkdir found path path:%s\n",path);
+			int imode=	atoi(strtok(NULL, ","));	
+			printf("in mkdir path:%s host:%s \n",path,host);
+			if (sendresponse_mkdir(host,path,imode) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,MKNOD)==0)
+		{
+			printf("In mknod\n");
+			char *path;
+			path = strtok(NULL,",");
+			char *mode_c = strtok(NULL,",");
+			printf("mode_c %s\n", mode_c);
+			int mode = 0;
+			if (mode_c != NULL) mode = atoi(mode_c);
+			char *rdev_c = strtok(NULL,",");
+			printf("rdev_c %s\n", rdev_c);
+			int rdev = 0;
+			if (rdev_c != NULL) rdev = atoi(rdev_c);
+			if (sendresponse_mknod(host,path,mode,rdev) == -1)
+				continue;
+		}
+		else if(strcmp(cmd,TRUNCATE)==0)
+		{
+			printf("In truncate\n");
+			char *path;
+			path = strtok(NULL,",");
+			char *size_c = strtok(NULL,",");
+			int size = 0;
+			if (size_c != NULL) size = atoi(size_c);
+			sendresponse_truncate(host,path,size);
+		}
+		else if(strcmp(cmd,UNLINK)==0)
+		{
+			printf("In unlink\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_unlink(host,path);
+		}
+		else if(strcmp(cmd,RMDIR)==0)
+		{
+			printf("In rmdir\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_rmdir(host,path);
+		}
+		/*
+		else if(strcmp(cmd,STATFS)==0)
+		{
+			printf("In statfs\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_statfs(host,path);
+		}*/
+		else if(strcmp(cmd,CHMOD)==0)
+		{
+			printf("In CHMOD\n");
+			char *path;
+			path = strtok(NULL, ",");
+			int imode=	atoi(strtok(NULL, ","));	
+			printf("in chmod path:%s host:%s \n",path,host);
+			if (sendresponse_chmod(host,path,imode) == -1)
+				continue;
+		}
+
+		else if(strcmp(cmd,RENAME)==0)
+		{
+			printf("In RENAME\n");
+			char *path;
+			char *dpath;
+			path = strtok(NULL, ",");
+			dpath=strtok(NULL, ",");	
+			printf("in rename path:%s dpath:%s host:%s \n",path,dpath,host);
+			if (sendresponse_rename(host,path,dpath) == -1)
+				continue;
+		}
+		else
+		{
+			printf("Unknown command %s\n",cmd);
+		}
+		cmd = NULL;
+	}
+	shutdown(socketb,2);
+	return 0;
+}
+
+
+
+
 
 int sendresponse_chmod(char *node, char *path,int imode)
 {
@@ -1167,7 +1692,7 @@ int sendresponse_getattr(char *node, char *path)
 
 int receiveresponse_client()
 {
-	printf("Receive command server\n");
+	printf("Receive command client\n");
         struct sockaddr_in receiveaddress, senderaddress;
 
         // create Non-Blocking socket to send message

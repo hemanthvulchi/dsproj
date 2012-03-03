@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
                 exit(1);
         }
 	pthread_t recvcmd_thread;
-	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receivecommand_server, NULL);
+	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receivecommand_namenode, NULL);
 	if (cmd_rc)
 	{
 		printf("Name node not to able to initiate receive comamnd thread\n");

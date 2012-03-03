@@ -22,8 +22,9 @@
 #define DNULL 0 
 #define EOS '\0'
 #define MAXF 200
-#define REP  100
+#define REP  5
 #define MAX_PATH 100
+#define SERV_PATH 100
 char *COMMAND_NAME;
 char getattr_buf[1000];
 //struct readdir_list *rlist_all[1024];

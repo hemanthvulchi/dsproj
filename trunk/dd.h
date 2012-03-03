@@ -6,9 +6,10 @@ typedef struct stdata
 int nno; 
 int pno;
 char fname[MAXF];
-char dname[REP][MAX_PATH];
+char dname[REP][SERV_PATH];
 char loc[MAX_PATH];
 int dflag;
+int dsync[REP];
 } datadef; 
 int nodeno;
 
@@ -39,5 +40,8 @@ node *addfile(char *fname,char *dname,char *loc);
 node *addfolder(char *fname,char *dname,char *loc);
 int removefile(char* vpath);
 int removefold(char* vpath);
+char *getdatanode(char* path,char* host);
 int dummymain();
+int storelist(node* thead,char* fpath);
+void recursestore(FILE* tfp, node* tnode);
 #endif
