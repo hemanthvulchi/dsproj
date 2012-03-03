@@ -568,7 +568,7 @@ int sendresponse_getattr(char *node, char *path)
 	printf("sendresp get attr stat res:%d, path:%s",res, path);
 	char gattr_b[1000];
         memset(gattr_b,'\0',1000);
-
+	strcpy(gattr_b,"");
 	if(res == -1)
 	{
 		strcat(gattr_b, "-1");//res
@@ -576,12 +576,13 @@ int sendresponse_getattr(char *node, char *path)
 	else
 	{
 		printf("sendresp get atrr: else part\n");
-		printf("sendresp get atrr: else part:%s\n",st);
+		//printf("sendresp get atrr: else part:%s\n",st);
 		char buffer[30];
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",res);
 		strcat(gattr_b, buffer);//res
 		strcat(gattr_b, ",");
+		printf("After res\n");
 
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",st.st_mode);
@@ -646,6 +647,7 @@ int sendresponse_getattr(char *node, char *path)
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",st.st_blocks);
 		strcat(gattr_b,buffer);//blocks
+		printf("End of else\n");
 	}
 	// I should load contents in st before I send..
         int ret = sendto(socketa, &gattr_b, strlen(gattr_b), 0, &sendaddress, slen);
