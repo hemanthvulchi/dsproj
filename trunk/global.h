@@ -30,5 +30,5 @@ char read_retbuf[4096];
 char write_retbuf[100];
 char mknod_retbuf[100];
 char truncate_retbuf[100];
-char mkdir_buf;
+char mkdir_buf[10];
 #endif
