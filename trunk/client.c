@@ -256,12 +256,15 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	printf("\n\nI am in xmp_mknod\n\n");
+	printf("Mode : %d\n", mode);
+	printf("Dev : %d\n", rdev);
 	int res;
 
 	char my_path[100];
         //strcpy(my_path,"/tmp/shyam-fuse");
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
+	printf("Path : %s\n", path);
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
 	   is more portable */
@@ -282,7 +285,7 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-	printf("I am in xmp_mkdir :path:%s mode:%s \n",path,mode);
+	printf("I am in xmp_mkdir :path:%s mode:%d \n",path,mode);
 	int res;
 		COMMAND_NAME = malloc (1+sizeof(char)*strlen(MKDIR));
         strcpy(COMMAND_NAME, MKDIR);

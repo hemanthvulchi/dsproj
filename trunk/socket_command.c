@@ -205,22 +205,18 @@ int receivecommand_server()
                         char *size = strtok(NULL,",");
                         printf("Size : %s\n",size);
                         int sz;
-                        if (size == NULL)
-                                sz = 0;
-                        else
-                                sz = atoi(size);
+                        if (size == NULL) sz = 0;
+                        else sz = atoi(size);
                         char *offset = strtok(NULL,",");
                         printf("Offset : %s\n", offset);
                         int off;
-                        if ( offset == NULL)
-                                off = 0;
-                        else
-                                off = atoi(offset);
+                        if (offset == NULL) off = 0;
+                        else off = atoi(offset);
 			char *w_buf = strtok(NULL,",");
                         if (sendresponse_write(host,path,sz,off,w_buf) == -1)
                                 continue;
                 }
-		else if(strcmp(cmd,MKDIR==0))
+		else if(strcmp(cmd,MKDIR)==0)
 		{
 			printf("In MKDIR\n");
 			char *path;
@@ -228,6 +224,18 @@ int receivecommand_server()
 			int imode=	atoi(strtok(NULL, ","));			
 			if (sendresponse_mkdir(host,path,imode) == -1)
 				continue;
+		}
+		else if(strcmp(cmd,MKNOD)==0)
+		{
+			printf("In mknod\n");
+			char *path;
+			path = strtok(NULL,",");
+			char *mode_c = strtok(NULL,",");
+			int mode = 0;
+			if (mode_c != NULL) mode = atoi(mode_c);
+			char *rdev_c = strtok(NULL,",");
+			int rdev = 0;
+			if (rdev_c != NULL) rdev = atoi(rdev_c);
 		}		
 		else
 		{
