@@ -26,6 +26,7 @@ char readdir_buf[10000];
 int access_return = 0;
 int open_return = 0;
 char read_buf[4096];
-int write_return = 0;
+char write_retbuf[100];
+char mknod_retbuf[100];
 char mkdir_buf;
 #endif

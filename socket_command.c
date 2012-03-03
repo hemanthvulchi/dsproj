@@ -236,6 +236,8 @@ int receivecommand_server()
 			char *rdev_c = strtok(NULL,",");
 			int rdev = 0;
 			if (rdev_c != NULL) rdev = atoi(rdev_c);
+			if (sendresponse_mknod(host,path,mode,rdev) == -1)
+				continue;
 		}		
 		else
 		{
@@ -245,6 +247,59 @@ int receivecommand_server()
 	}
 	shutdown(socketb,2);
 	return 0;
+}
+
+int sendresponse_mknod(char *node, char *path, int mode, int rdev)
+{
+        printf("Send response mknod %s %d %d\n", path, mode, rdev);
+
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	int res;
+	if (S_ISREG(mode))
+	{
+		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		if (res >= 0) res = close(res);
+	}
+	else if (S_ISFIFO(mode))
+		res = mkfifo(path, mode);
+	else
+		res = mknod(path, mode, rdev);
+	
+	printf("Error # : %d\n", errno);
+	char mknodbuf[100];
+	memset(mknodbuf,'\0',100);
+	strcpy(mknodbuf,"");
+
+	char buffer[30];
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",res);
+	strcat (mknodbuf,buffer);
+	strcat (mknodbuf,",");
+
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (mknodbuf,buffer);
+	strcat (mknodbuf,",");
+	
+        int ret = sendto(socketa, &mknodbuf, strlen(mknodbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed with 0\n");
+        else if (ret == -1) printf("send() failed with 1\n");
+	else printf("Sending response done\n");
+        close(socketa);
+        return 0;
 }
 
 int sendresponse_write(char *node, char *path, int size, int offset, char *buf)
@@ -264,32 +319,43 @@ int sendresponse_write(char *node, char *path, int size, int offset, char *buf)
                 exit(1);
         }
 
+	char writebuf[100];
+	char buffer[30];
+	memset(writebuf,'\0',100);
+	strcpy(writebuf,"");
         int ret,res;
         int fd = open(path, O_WRONLY);
         if (fd == -1)
 	{
-                res = -errno;
+		strcat(writebuf,"-1");
+		strcat(writebuf,",");
+
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",errno);
+		strcat (writebuf,buffer);
 	}
 	else
 	{
         	res = pwrite(fd, buf, size, offset);
         	if (res == -1)
                 	res = -errno;
+
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",res);
+		strcat(writebuf,buffer);
+		strcat(writebuf,",");
+
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",errno);
+		strcat (writebuf,buffer);
+	
         	close(fd);
 	}
 
-        ret = sendto(socketa, &res, sizeof(res), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-                return -1;
-        }
-        else if (ret == -1)
-        {
-                printf("send() failed\n");
-                return -1;
-        }
- 	printf("Sending response done\n");
+        ret = sendto(socketa, &writebuf, strlen(writebuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n");
+ 	else printf("Sending response done\n");
 
         close(socketa);
         return 0;
@@ -774,12 +840,19 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, WRITE) == 0)
 	{
-		rc = recvfrom(socketb, &write_return, sizeof(int), 0, &senderaddress, &slen);
-                if (rc == 0)
-                        printf("Receive failed\n");
-                else if (rc == -1)
-                        printf("recv() failed\n");
-                printf("Write Return : %d\n",write_return);
+		rc = recvfrom(socketb, &write_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Write Return : %s\n",write_retbuf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, MKNOD) == 0)
+	{
+		rc = recvfrom(socketb, &mknod_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Mknod Return : %s\n",mknod_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
