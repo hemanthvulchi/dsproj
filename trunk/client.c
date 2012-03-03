@@ -66,7 +66,15 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	char *resv = strtok(getattr_buf,",");
 	res = atoi(resv);
 	if (res == -1)
+	{
+		char *err = strtok(NULL,",");
+		errno = atoi(err);
 		return -errno;
+	}
+
+	char *err = strtok(NULL,",");
+	errno = atoi(err); // This should be 0..
+	printf("Errno : %d\n", errno);
 
 	char *tmp;
 	tmp = strtok(NULL,",");

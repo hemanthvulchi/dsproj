@@ -572,6 +572,11 @@ int sendresponse_getattr(char *node, char *path)
 	if(res == -1)
 	{
 		strcat(gattr_b, "-1");//res
+		strcat(gattr_b, ",");
+		char buffer[30];
+        	memset(buffer,'\0',30);
+		snprintf(buffer,10,"%d",errno);
+		strcat(gattr_b,buffer);
 	}
 	else
 	{
@@ -584,6 +589,9 @@ int sendresponse_getattr(char *node, char *path)
 		strcat(gattr_b, ",");
 		printf("After res\n");
 
+		strcat(gattr_b,"0");//mode
+		strcat(gattr_b, ",");
+		
         	memset(buffer,'\0',30);
 		snprintf(buffer,10,"%d",st.st_mode);
 		strcat(gattr_b,buffer);//mode
