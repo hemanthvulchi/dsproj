@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/xattr.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "list.c"
@@ -251,7 +253,51 @@ int receivecommand_server()
 			char *size_c = strtok(NULL,",");
 			int size = 0;
 			if (size_c != NULL) size = atoi(size_c);
-			//sendresponse_truncate(host,path,size);
+			sendresponse_truncate(host,path,size);
+		}
+		else if(strcmp(cmd,UNLINK)==0)
+		{
+			printf("In unlink\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_unlink(host,path);
+		}
+		else if(strcmp(cmd,RMDIR)==0)
+		{
+			printf("In rmdir\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_rmdir(host,path);
+		}
+		/*
+		else if(strcmp(cmd,STATFS)==0)
+		{
+			printf("In statfs\n");
+			char *path;
+			path = strtok(NULL,",");
+			sendresponse_statfs(host,path);
+		}*/
+		else if(strcmp(cmd,CHMOD)==0)
+		{
+			printf("In CHMOD\n");
+			char *path;
+			path = strtok(NULL, ",");
+			int imode=	atoi(strtok(NULL, ","));	
+			printf("in chmod path:%s host:%s \n",path,host);
+			if (sendresponse_chmod(host,path,imode) == -1)
+				continue;
+		}
+
+		else if(strcmp(cmd,RENAME)==0)
+		{
+			printf("In RENAME\n");
+			char *path;
+			char *dpath;
+			path = strtok(NULL, ",");
+			dpath=strtok(NULL, ",");	
+			printf("in rename path:%s dpath:%s host:%s \n",path,dpath,host);
+			if (sendresponse_rename(host,path,dpath) == -1)
+				continue;
 		}
 		else
 		{
@@ -263,6 +309,294 @@ int receivecommand_server()
 	return 0;
 }
 
+int sendresponse_chmod(char *node, char *path,int imode)
+{
+	printf("Send response chmod %s, imode: %d\n", path,imode);
+
+	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+		char msg[30];		
+//		imode=0777;
+		int res = chmod(path, imode);
+//		printf("Send response chmod %s res:%d\n", path,res);
+
+
+//	printf("Error # : %d\n", errno);
+	char buffer[30];
+	memset(msg,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+
+		if (res == -1)
+			msg[0]='Y';
+		else
+			msg[0]='N';		
+	strcat (msg,",");
+	strcat (msg,buffer);
+
+
+
+		printf("Send response chmod %s msg:%s\n", path,msg);
+		int ret = sendto(socketa, &msg, strlen(msg), 0, &sendaddress, slen);
+		
+        if (ret == 0)
+                printf("Send failed\n");
+        else if (ret == -1)
+                printf("send() failed\n");
+		else
+	        printf("Sending response done\n");
+	
+        close(socketa);
+        return 0;
+}
+
+
+int sendresponse_rename(char *node, char *path,char *dpath)
+{
+	printf("Send response rename %s, imode: %s\n", path,dpath);
+
+	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+		char msg[30];		
+//		imode=0777;
+		int res = rename(path, dpath);
+//		printf("Send response rename %s res:%d\n", path,res);
+
+
+//	printf("Error # : %d\n", errno);
+	char buffer[30];
+	memset(msg,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+
+		if (res == -1)
+			msg[0]='Y';
+		else
+			msg[0]='N';		
+	strcat (msg,",");
+	strcat (msg,buffer);
+
+
+
+		printf("Send response rename %s msg:%s\n", path,msg);
+		int ret = sendto(socketa, &msg, strlen(msg), 0, &sendaddress, slen);
+		
+        if (ret == 0)
+                printf("Send failed\n");
+        else if (ret == -1)
+                printf("send() failed\n");
+		else
+	        printf("Sending response done\n");
+	
+        close(socketa);
+        return 0;
+}
+
+
+/*
+int sendresponse_statfs(char *node, char *path)
+{
+        printf("Send response statfs %s\n", path);
+
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	char statfsbuf[1000];
+	memset(statfsbuf,'\0',1000);
+	strcpy(statfsbuf,"");
+
+	char buffer[30];
+	memset(buffer,'\0',30);
+	struct statvfs st;
+	int res = statvfs(path, &st);
+
+	snprintf(buffer, 10,"%d",res);
+	strcat (statfsbuf,buffer);
+	strcat (statfsbuf,",");
+
+	printf("Error # : %d\n", errno);
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (statfsbuf,buffer);
+	strcat (statfsbuf,",");
+	if(res != -1)
+	{
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_bsize);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_frsize);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_blocks);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_bfree);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_bavail);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_files);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_ffree);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_favail);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_fsid);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_flag);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+		memset(buffer,'\0',30);
+		snprintf(buffer, 10,"%d",st.f_namemax);
+		strcat (statfsbuf,buffer);
+		strcat (statfsbuf,",");
+	}
+
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (statfsbuf,buffer);
+	strcat (statfsbuf,",");
+	
+        int ret = sendto(socketa, &statfsbuf, strlen(statfsbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed with 0\n");
+        else if (ret == -1) printf("send() failed with 1\n");
+	else printf("Sending response done\n");
+        close(socketa);
+        return 0;
+}
+*/
+
+int sendresponse_rmdir(char *node, char *path)
+{
+        printf("Send response rmdir %s\n", path);
+
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	int res = rmdir(path);
+	
+	printf("Error # : %d\n", errno);
+	char rmdirbuf[100];
+	memset(rmdirbuf,'\0',100);
+	strcpy(rmdirbuf,"");
+
+	char buffer[30];
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",res);
+	strcat (rmdirbuf,buffer);
+	strcat (rmdirbuf,",");
+
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (rmdirbuf,buffer);
+	strcat (rmdirbuf,",");
+	
+        int ret = sendto(socketa, &rmdirbuf, strlen(rmdirbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed with 0\n");
+        else if (ret == -1) printf("send() failed with 1\n");
+	else printf("Sending response done\n");
+        close(socketa);
+        return 0;
+}
+
+int sendresponse_unlink(char *node, char *path)
+{
+        printf("Send response unlink %s\n", path);
+
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(RESPONSE_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+	int res = unlink(path);
+	
+	printf("Error # : %d\n", errno);
+	char unlinkbuf[100];
+	memset(unlinkbuf,'\0',100);
+	strcpy(unlinkbuf,"");
+
+	char buffer[30];
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",res);
+	strcat (unlinkbuf,buffer);
+	strcat (unlinkbuf,",");
+
+	memset(buffer,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+	strcat (unlinkbuf,buffer);
+	strcat (unlinkbuf,",");
+	
+        int ret = sendto(socketa, &unlinkbuf, strlen(unlinkbuf), 0, &sendaddress, slen);
+        if (ret == 0) printf("Send failed with 0\n");
+        else if (ret == -1) printf("send() failed with 1\n");
+	else printf("Sending response done\n");
+        close(socketa);
+        return 0;
+}
 
 int sendresponse_truncate(char *node, char *path, int size)
 {
@@ -930,10 +1264,41 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, TRUNCATE) == 0)
 	{
+		memset(truncate_retbuf,'\0',100);
 		rc = recvfrom(socketb, &truncate_retbuf, 100, 0, &senderaddress, &slen);
                 if (rc == 0) printf("Receive failed\n");
                 else if (rc == -1) printf("recv() failed\n");
                 printf("Truncate Return : %s\n",truncate_retbuf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, UNLINK) == 0)
+	{
+		memset(unlink_retbuf,'\0',100);
+		rc = recvfrom(socketb, &unlink_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Unlink Return : %s\n",unlink_retbuf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, RMDIR) == 0)
+	{
+		memset(rmdir_retbuf,'\0',100);
+		rc = recvfrom(socketb, &rmdir_retbuf, 100, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Rmdir Return : %s\n",rmdir_retbuf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, STATFS) == 0)
+	{
+		memset(statvfs_retbuf,'\0',1000);
+		rc = recvfrom(socketb, &statvfs_retbuf, 1000, 0, &senderaddress, &slen);
+                if (rc == 0) printf("Receive failed\n");
+                else if (rc == -1) printf("recv() failed\n");
+                printf("Statfs Return : %s\n",statvfs_retbuf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
@@ -946,11 +1311,37 @@ int receiveresponse_client()
                         printf("Receive failed\n");
                 else if (rc == -1)
                         printf("recv() failed\n");
-								printf("Count : %s\n", mkdir_buf);
+		printf("Count : %s\n", mkdir_buf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
+	else if (strcmp(COMMAND_NAME, CHMOD)==0)
+	{
+		printf("receiverresponse_client before in CHMOD \n");
+		memset(chmod_buf,'\0',10);
+		rc = recvfrom(socketb, &chmod_buf, 10, 0, &senderaddress, &slen);
+                if (rc == 0)
+                        printf("Receive failed\n");
+                else if (rc == -1)
+                        printf("recv() failed\n");
+								printf("Count : %s\n", chmod_buf);
                 getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
                 printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 	}
 	
+	else if (strcmp(COMMAND_NAME, RENAME)==0)
+	{
+		printf("receiverresponse_client before in RENAME \n");
+		memset(rename_buf,'\0',10);
+		rc = recvfrom(socketb, &rename_buf, 10, 0, &senderaddress, &slen);
+                if (rc == 0)
+                        printf("Receive failed\n");
+                else if (rc == -1)
+                        printf("recv() failed\n");
+								printf("Count : %s\n", rename_buf);
+                getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
+                printf("Command received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+	}
 
         close(socketb);
 	return 0;

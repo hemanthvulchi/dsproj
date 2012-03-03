@@ -14,6 +14,11 @@
 #define OPEN "open"
 #define READ "read"
 #define WRITE "write"
+#define UNLINK "unlink"
+#define RMDIR "rmdir"
+#define STATFS "statfs"
+#define CHMOD "chmod"
+#define RENAME "rename"
 #define DNULL 0 
 #define EOS '\0'
 #define MAXF 200
@@ -31,4 +36,9 @@ char write_retbuf[100];
 char mknod_retbuf[100];
 char truncate_retbuf[100];
 char mkdir_buf[10];
+char unlink_retbuf[100];
+char rmdir_retbuf[100];
+char statvfs_retbuf[1000];
+char rename_buf[10];
+char chmod_buf[10];
 #endif
