@@ -221,7 +221,9 @@ int receivecommand_server()
 			printf("In MKDIR\n");
 			char *path;
 			path = strtok(NULL, ",");
-			int imode=	atoi(strtok(NULL, ","));			
+			printf("mkdir found path path:%s\n",path);
+			int imode=	atoi(strtok(NULL, ","));	
+			printf("in mkdir path:%s host:%s \n",path,host);
 			if (sendresponse_mkdir(host,path,imode) == -1)
 				continue;
 		}
@@ -651,14 +653,14 @@ int sendresponse_readdir(char *node, char *path)
         return 0;
 }
 
-
 int sendresponse_mkdir(char *node, char *path,int imode)
 {
-	printf("Send response mkdir %s\n", path);
+	printf("Send response mkdir %s, imode: %d\n", path,imode);
+
 	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         struct sockaddr_in sendaddress;
         int slen = sizeof(sendaddress);
-
+		printf("Send response mkdir %s llen:%d\n", path,slen);
         char ip[100];
         if (hostname_to_ip(node, ip) == -1)
                 return -1;
@@ -668,30 +670,41 @@ int sendresponse_mkdir(char *node, char *path,int imode)
                 fprintf(stderr, "inet_aton() failed\n");
                 exit(1);
         }
-		char msg;		
+		char msg[30];		
+//		imode=0777;
 		int res = mkdir(path, imode);
-		if (res == -1)
-			msg='N';
-		else
-			msg='Y';		
-	
-		int ret = sendto(socketa, msg, strlen(msg), 0, &sendaddress, slen);
+		printf("Send response mkdir %s res:%d\n", path,res);
 
+
+	printf("Error # : %d\n", errno);
+	char buffer[30];
+	memset(msg,'\0',30);
+	snprintf(buffer, 10,"%d",errno);
+
+		if (res == -1)
+			msg[0]='Y';
+		else
+			msg[0]='N';		
+	strcat (msg,",");
+	strcat (msg,buffer);
+
+
+
+		printf("Send response mkdir %s msg:%s\n", path,msg);
+		int ret = sendto(socketa, &msg, strlen(msg), 0, &sendaddress, slen);
+		
         if (ret == 0)
-        {
                 printf("Send failed\n");
-                return -1;
-        }
         else if (ret == -1)
-        {
                 printf("send() failed\n");
-                return -1;
-        }
-        printf("Sending response done\n");
+		else
+	        printf("Sending response done\n");
 	
         close(socketa);
         return 0;
 }
+
+
 int sendresponse_getattr(char *node, char *path)
 {
 	printf("Send response getattr to %s\n",node);
@@ -926,7 +939,8 @@ int receiveresponse_client()
 	}
 	else if (strcmp(COMMAND_NAME, MKDIR)==0)
 	{
-		memset(readdir_buf,'\0',10000);
+		printf("receiverresponse_client before in MKDIR \n");
+		memset(mkdir_buf,'\0',10000);
 		rc = recvfrom(socketb, &mkdir_buf, 10000, 0, &senderaddress, &slen);
                 if (rc == 0)
                         printf("Receive failed\n");

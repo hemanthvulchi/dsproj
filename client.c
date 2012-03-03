@@ -328,21 +328,40 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
+	printf("in mkdir client\n");
 	printf("I am in xmp_mkdir :path:%s mode:%d \n",path,mode);
+	char my_path[100];
+        //strcpy(my_path,"/tmp/shyam-fuse");
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+	printf("Path : %s\n", path);
+
+
 	int res;
 		COMMAND_NAME = malloc (1+sizeof(char)*strlen(MKDIR));
         strcpy(COMMAND_NAME, MKDIR);
 	pthread_t recvcmd_thread;
         int cmd_rc = 0;
 	pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
-	printf("Make dir: Started receieving\n");
+	printf("Make dir: Started work\n");
         if (cmd_rc)
         {
                 printf("Name node not to able to initiate receive comamnd thread\n");
                 free(COMMAND_NAME);
                 exit(1);
         }
-	if (sendcommand(namenode, path, READDIR) == -1)
+	printf("client.c makedir after adding buf to path\n");
+		char buf[10];
+		memset(buf,'\0',10);
+		printf("first \n");
+		snprintf(buf, 10,"%d",mode);
+		printf("second \n");
+		strcat(my_path, ",");
+		printf("third \n");
+		strcat(my_path, buf);
+	printf("client.c makedir after adding buf to path\n");
+	
+	if (sendcommand(namenode, my_path, MKDIR) == -1)
         {
 		printf("Send command failed\n");
                 pthread_kill(recvcmd_thread,0);
@@ -357,9 +376,19 @@ static int xmp_mkdir(const char *path, mode_t mode)
 
 /*
 	res = mkdir(path, mode);
-	if (res == -1)
-		return -errno;
-*/
+	if (res == -1)*/
+printf("before we parse\n");
+char *ptr = strtok(mkdir_buf,",");
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+	
+printf("we are printing error no errno:%d",errno);
+	printf("mkdir buf o %c\n", mkdir_buf[0]);
+	if(mkdir_buf[0]=='Y')
+		{
+				
+			return -errno;
+		}
 	return 0;
 }
 
