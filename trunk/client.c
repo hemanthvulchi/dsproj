@@ -395,13 +395,41 @@ printf("we are printing error no errno:%d",errno);
 static int xmp_unlink(const char *path)
 {
 	printf("\n\nUnlink\n\n");
-	int res;
 
+	printf("Path : %s\n", path);
 	char my_path[100];
+	memset(my_path,'\0',100);
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
-	res = unlink(my_path);
+	// I have to send the path from here to the namenode..
+	// Get back the list of files..
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(UNLINK));
+        strcpy(COMMAND_NAME, UNLINK);
+	pthread_t recvcmd_thread;
+        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc != 0)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	if (sendcommand(namenode, my_path, UNLINK) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+
+	//res = unlink(my_path);
+	char *ptr = strtok(unlink_retbuf,",");
+	int res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
 
@@ -411,9 +439,40 @@ static int xmp_unlink(const char *path)
 static int xmp_rmdir(const char *path)
 {
 	printf("\n\nrmdir\n\n");
-	int res;
+	printf("Path : %s\n", path);
+	char my_path[100];
+	memset(my_path,'\0',100);
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
 
-	res = rmdir(path);
+	// I have to send the path from here to the namenode..
+	// Get back the list of files..
+	COMMAND_NAME = malloc (1+sizeof(char)*strlen(RMDIR));
+        strcpy(COMMAND_NAME, RMDIR);
+	pthread_t recvcmd_thread;
+        int cmd_rc = pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc != 0)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	if (sendcommand(namenode, my_path, RMDIR) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+
+	//res = rmdir(path);
+	char *ptr = strtok(rmdir_retbuf,",");
+	int res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
 
@@ -436,12 +495,61 @@ static int xmp_rename(const char *from, const char *to)
 {
 	printf("\n\nrename\n\n");
 	int res;
+	printf("I am in xmp_rename :from:%s to:%s \n",from,to);
+	char my_path[100];
+	char my_tpath[100];
+        strcpy(my_path,tmp_path);
+        strcpy(my_tpath,tmp_path);
+        strcat(my_path,from);
+        strcat(my_tpath,to);
+//		printf("Path : %s\n", path);
 
-	res = rename(from, to);
+
+		COMMAND_NAME = malloc (1+sizeof(char)*strlen(RENAME));
+        strcpy(COMMAND_NAME, RENAME);
+		pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+		pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+		if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+		strcat(my_path, ",");
+		strcat(my_path, my_tpath);
+//		printf("client.c rename after adding buf to path\n");
+	
+	if (sendcommand(namenode, my_path, RENAME) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+	printf("End of command\n");
+
+char *ptr = strtok(rename_buf,",");
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+	
+printf("we are printing error no errno:%d",errno);
+	printf("rename buf o %c\n", rename_buf[0]);
+	if(rename_buf[0]=='Y')
+		{
+			return -errno;
+		}
+	return 0;
+
+
+/*	res = rename(from, to);
 	if (res == -1)
 		return -errno;
 
-	return 0;
+	return 0; */
 }
 
 static int xmp_link(const char *from, const char *to)
@@ -458,14 +566,65 @@ static int xmp_link(const char *from, const char *to)
 
 static int xmp_chmod(const char *path, mode_t mode)
 {
-	printf("\n\nchmod\n\n");
+	printf("I am in xmp_chmode :path:%s mode:%d \n",path,mode);
+	char my_path[100];
+        //strcpy(my_path,"/tmp/shyam-fuse");
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+//		printf("Path : %s\n", path);
+
+
 	int res;
+		COMMAND_NAME = malloc (1+sizeof(char)*strlen(CHMOD));
+        strcpy(COMMAND_NAME, CHMOD);
+		pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+		pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+		if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+	    char buf[10];
+		memset(buf,'\0',10);
+		snprintf(buf, 10,"%d",mode);
+		strcat(my_path, ",");
+		strcat(my_path, buf);
+//		printf("client.c chmod after adding buf to path\n");
+	
+	if (sendcommand(namenode, my_path, CHMOD) == -1)
+        {
+		printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+	printf("Waiting for pthread join\n");
+	pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
+	printf("End of command\n");
+
+char *ptr = strtok(chmod_buf,",");
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
+	
+printf("we are printing error no errno:%d",errno);
+	printf("chmodbuf o %c\n", chmod_buf[0]);
+	if(chmod_buf[0]=='Y')
+		{
+				
+			return -errno;
+		}
+	return 0;
+
+/*	int res;
 
 	res = chmod(path, mode);
 	if (res == -1)
 		return -errno;
 
-	return 0;
+	return 0;*/
 }
 
 static int xmp_chown(const char *path, uid_t uid, gid_t gid)
@@ -493,7 +652,7 @@ static int xmp_truncate(const char *path, off_t size)
 
 	// I have to send the path from here to the namenode..
 	// Get back the list of files..
-	/*
+	
 	COMMAND_NAME = malloc (1+sizeof(char)*strlen(TRUNCATE));
         strcpy(COMMAND_NAME, TRUNCATE);
 	pthread_t recvcmd_thread;
@@ -519,7 +678,7 @@ static int xmp_truncate(const char *path, off_t size)
 	printf("Waiting for pthread join\n");
 	pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
-	*/
+	
 	//res = truncate(path, size);
 
 	char *ptr = strtok(truncate_retbuf,",");
@@ -690,6 +849,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
         printf("Offset : %d\n", offset);
 
         char my_path[10000];
+	memset(my_path,'\0',10000);
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
 
@@ -755,12 +915,67 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
 	printf("\n\nI am in statfs\n\n");
-	int res;
+	char my_path[100];
+	memset(my_path,'\0',100);
+        strcpy(my_path,tmp_path);
+        strcat(my_path,path);
+	/*
+	// I have to send the path from here to the namenode..
+        // Get back the list of files..
+        COMMAND_NAME = malloc (1+sizeof(char)*strlen(WRITE));
+        strcpy(COMMAND_NAME, WRITE);
+        pthread_t recvcmd_thread;
+        int cmd_rc = 0;
+        pthread_create(&recvcmd_thread, NULL, receiveresponse_client, NULL);
+        if (cmd_rc)
+        {
+                printf("Name node not to able to initiate receive comamnd thread\n");
+                free(COMMAND_NAME);
+                exit(1);
+        }
+        if (sendcommand(namenode, my_path, WRITE) == -1)
+        {
+                printf("Send command failed\n");
+                pthread_kill(recvcmd_thread,0);
+                free(COMMAND_NAME);
+                return -1;
+        }
+        printf("Waiting for pthread join\n");
+        pthread_join(recvcmd_thread, NULL);
+        free(COMMAND_NAME);
 
-	res = statvfs(path, stbuf);
+	//res = statvfs(path, stbuf);
+
+	char *ptr = strtok(statvfs_retbuf,",");
+	int res = atoi(ptr);
+	ptr = strtok(NULL,",");
+	errno = atoi(ptr);
 	if (res == -1)
 		return -errno;
-
+	char *tmp;
+	tmp = strtok(NULL,",");
+	stbuf->f_bsize = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_frsize = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_blocks = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_bfree = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_bavail = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_files = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_ffree = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_favail = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_fsid = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_flag = atoi(tmp);
+	tmp = strtok(NULL,",");
+	stbuf->f_namemax = atoi(tmp);
+	*/
 	return 0;
 }
 
