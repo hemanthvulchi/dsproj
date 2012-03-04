@@ -88,6 +88,23 @@ datanode* datanode_search(char name[])
         }
         return entry;
 }
+datanode* fetch_datanode()
+{
+	datanode *entry = NULL;
+	dlist = firstdlist;
+        if( dlist == NULL )
+        {
+                return entry;
+        }
+        else
+        {
+                while(dlist != NULL)
+                {
+                	return dlist;
+                }
+        }
+        return entry;
+}
 
 void datanode_display()
 {
