@@ -3,6 +3,7 @@
 *	This is to be executed in the namenode server
 */
 #include <stdio.h>
+#include <time.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
@@ -24,15 +25,11 @@ int main(int argc, char *argv[])
                 printf("\nUSAGE : %s <namenode-name>\n\n",argv[0]);
                 exit(1);
         }
-
  	// Check namenode details here - return -1 for error..
         namenode = malloc (strlen(argv[1])*sizeof(char)+1);
-        // Ping namenode and check if it is valid.
-        if(sendping(argv[1]) == -1)
-                return -1;
-        printf("Ping success\n");
-        strcpy(namenode,argv[1]);
-
+	strcpy(namenode,argv[1]);
+	memset(datanode_namenode,'\0',SERV_PATH);
+	strcpy(datanode_namenode,namenode);
 	pthread_t recvping_thread;
 	int ping_rc = pthread_create(&recvping_thread, NULL, receiveping, NULL);
         if (ping_rc)
@@ -40,7 +37,18 @@ int main(int argc, char *argv[])
                 printf("receive ping thread create error\n");
                 exit(1);
         }
-	
+
+	printf("Namenode %s\n",namenode);
+        // Ping namenode and check if it is valid.
+        if(sendping(argv[1]) == -1)
+                return -1;
+	int counter = 0;
+	while(pingsuccess != 1)
+	{
+		sleep(1);
+		counter++;
+	}
+	printf("After success %d\n",counter);
   	// Datanode should contact namenode and let him know that he is available.
         // Send a message to namenode.
         if (sendcommand(namenode, "", DATANODE) == -1)

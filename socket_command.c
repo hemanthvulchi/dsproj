@@ -21,7 +21,6 @@
 #include "network_common.c"
 
 #include <dirent.h>
-#include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
@@ -387,6 +386,7 @@ int receivecommand_namenode()
 			//Return a datanode, where file can be created
 			dpath = getdatanode(path,host);
 
+			
 			printf("User is trying to access something..%s \n",dpath);
 			      if (sendcommand(dpath, buf2, GETATTR) == -1)
         {

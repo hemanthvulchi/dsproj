@@ -4,6 +4,7 @@
 
 #ifndef _datanode_functions
 #define _datanode_functions
+#include "network_common.c"
 struct _datanode
 {
 	char *node;
@@ -100,7 +101,9 @@ datanode* fetch_datanode()
         {
                 while(dlist != NULL)
                 {
-                	return dlist;
+			if(check_nodealive(dlist->node) == 1)
+                		return dlist;
+			dlist = dlist->next;
                 }
         }
         return entry;
@@ -123,4 +126,5 @@ void datanode_display()
                 }
         }
 }
+
 #endif

@@ -20,6 +20,7 @@
 // -1 - Failure 
 int sendping(char *node)
 {
+	pingsuccess = 0;
 	int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
 	struct sockaddr_in sendaddress;
@@ -48,6 +49,39 @@ int sendping(char *node)
     	}
    	shutdown(socketa,2);
    	return 0;
+}
+
+// -1 - Failure 
+static int sendping1(char *node, char *msg)
+{
+	printf("Send ping 1\n");
+        int socketa = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+        struct sockaddr_in sendaddress;
+        int slen = sizeof(sendaddress);
+
+        char ip[100];
+        if (hostname_to_ip(node, ip) == -1)
+                return -1;
+        sendaddress.sin_family = AF_INET;
+        sendaddress.sin_port = htons(PING_PORT);
+        if (inet_aton(ip, &sendaddress.sin_addr)==0) {
+                fprintf(stderr, "inet_aton() failed\n");
+                exit(1);
+        }
+
+        // this is code to send message
+        char buf[15];
+	memset(buf,'\0',15);
+	strcpy(buf,msg);
+        int ret = sendto(socketa, buf, strlen(buf), 0, &sendaddress, slen);
+        if (ret == 0)
+        {
+                printf("Send failed\n");
+        }        else if (ret == -1)        {
+                printf("send() failed\n");        }
+        shutdown(socketa,2);
+        return 0;
 }
 
 // Ideally this function should return only when the program is going to terminate..
@@ -102,8 +136,13 @@ int receiveping()
 		{
 			getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
 			printf("Ping received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+			sendping1(host,"fucku");
 			//proper ping, call some function here..
 			//May be intimate some process.
+		}
+		if (strcmp(buf1,"fucku")==0)
+		{
+			pingsuccess = 1;
 		}
         	//printf("Received packet from %s : %d bytes\nData: %s\n\n",inet_ntoa(senderaddress.sin_addr), ntohs(senderaddress.sin_port), buf1);
 	}
