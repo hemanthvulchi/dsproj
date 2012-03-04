@@ -8,6 +8,7 @@
 #define RESPONSE_PORT 8013
 
 #define REPLICATION_PORT 8019
+#define MONITOR_PORT 8020
 
 #define ACCESS "access"
 #define GETATTR "getattr"
@@ -32,8 +33,12 @@
 #define SERV_PATH 100
 #define JUNK "Adasdadasdasda"
 
+#define MONITOR "monitor"
 
 #define R_FILEEXIST "replica_fileexists"
+#define R_READ "r_read"
+#define R_WRITE "r_write"
+
 char *R_COMMAND_NAME;
 char *COMMAND_NAME;
 char getattr_buf[1000];
@@ -56,6 +61,8 @@ char datanode_namenode[SERV_PATH];
 char namenode_configfile[120];
 int pingsuccess = 1;
 int clientreceive_success = 1;
-
+int datanoderesponse_success = 1;
+char r_read_buf[4196];
+char r_write_buf[100];
 char r_fexist_buf[100];
 #endif

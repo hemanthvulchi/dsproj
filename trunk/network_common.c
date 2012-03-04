@@ -45,6 +45,13 @@ static int fexist(char *filename)
   return 0;
 }
 
+int isDir(const char* target)
+{
+   struct stat statbuf;
+   stat(target, &statbuf);
+   return S_ISDIR(statbuf.st_mode);
+}
+
 //Checks if a datanode is alive..
 // 1 - alive.. 0 - dead
 int check_nodealive(char *name)

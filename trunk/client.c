@@ -880,6 +880,7 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
         strcat(my_path,",");
         strcat(my_path,buffer);
 
+	clientreceive_success = 0;
         if (sendcommand(namenode, my_path, OPEN) == -1)
         {
                 printf("Send command failed\n");
@@ -950,6 +951,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
         snprintf(buffer, 10,"%d",offset);
         strcat(my_path,buffer);
 
+	clientreceive_success = 0;
         if (sendcommand(namenode, my_path, READ) == -1)
         {
                 printf("Send command failed\n");
@@ -1047,6 +1049,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	strcat(my_path,",");
 	strcat(my_path,buf);
 	printf("Mypath, %s\n",my_path);
+	clientreceive_success = 0;
         if (sendcommand(namenode, my_path, WRITE) == -1)
         {
                 printf("Send command failed\n");
