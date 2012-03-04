@@ -27,6 +27,7 @@
 #include <sys/xattr.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <fcntl.h>
 #include "list.c"
 #include "dd.c"
@@ -270,14 +271,14 @@ int receivecommand_server()
 			path = strtok(NULL,",");
 			sendresponse_rmdir(host,path);
 		}
-		/*
+		
 		else if(strcmp(cmd,STATFS)==0)
 		{
 			printf("In statfs\n");
 			char *path;
 			path = strtok(NULL,",");
 			sendresponse_statfs(host,path);
-		}*/
+		}
 		else if(strcmp(cmd,CHMOD)==0)
 		{
 			printf("In CHMOD\n");
@@ -539,14 +540,14 @@ int receivecommand_namenode()
 								continue;
         }
 		}
-		/*
+		
 		else if(strcmp(cmd,STATFS)==0)
 		{
 			printf("In statfs\n");
 			char *path;
 			path = strtok(NULL,",");
 			sendresponse_statfs(host,path);
-		}*/
+		}
 		else if(strcmp(cmd,CHMOD)==0)
 		{
 			printf("In CHMOD\n");
@@ -790,14 +791,14 @@ int receivecommand_datanode()
 			path = strtok(NULL,",");
 			sendresponse_rmdir(host,path);
 		}
-		/*
+		
 		else if(strcmp(cmd,STATFS)==0)
 		{
 			printf("In statfs\n");
 			char *path;
 			path = strtok(NULL,",");
 			sendresponse_statfs(host,path);
-		}*/
+		}
 		else if(strcmp(cmd,CHMOD)==0)
 		{
 			printf("In CHMOD\n");
@@ -936,7 +937,7 @@ int sendresponse_rename(char *node, char *path,char *dpath)
 }
 
 
-/*
+
 int sendresponse_statfs(char *node, char *path)
 {
         printf("Send response statfs %s\n", path);
@@ -1033,7 +1034,7 @@ int sendresponse_statfs(char *node, char *path)
         close(socketa);
         return 0;
 }
-*/
+
 
 int sendresponse_rmdir(char *node, char *path)
 {

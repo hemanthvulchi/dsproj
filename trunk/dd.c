@@ -466,7 +466,7 @@ int storelist(node* thead,char* fpath)
 	printf("Store list\n");
 	if (ifp == NULL) 
 	{
-					fprintf(stderr, "Can't open input file in.list!\n");
+		fprintf(stderr, "Can't open input file in.list!\n");
 		exit(1);
 	}
 	printf("calling recursive store list \n");
