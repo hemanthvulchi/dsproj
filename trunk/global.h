@@ -51,6 +51,9 @@ char rmdir_retbuf[100];
 char statvfs_retbuf[1000];
 char rename_buf[10];
 char chmod_buf[10];
+char datanode_namenode[SERV_PATH];
+
+int pingsuccess = 1;
 
 char r_fexist_buf[100];
 #endif

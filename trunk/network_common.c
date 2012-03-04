@@ -3,7 +3,7 @@
 #ifndef _network_common_c
 #define _network_common_c
 
-#include <stdio.h>
+#include <time.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -35,6 +35,24 @@ int hostname_to_ip(char *hostname, char *ip)
         }
         return 1;
 }
+
+//Checks if a datanode is alive..
+// 1 - alive.. 0 - dead
+int check_nodealive(char *name)
+{
+        sendping(name);
+        int counter = 0;
+        while(pingsuccess != 1)
+        {
+                sleep(1);
+                counter++;
+                if(counter > 100)
+                        return 0;
+        }
+
+        return 1;
+}
+
 
 // Structure to send list of directories.. :)
 // I am just creating so that later if I have to add anything, I can add.

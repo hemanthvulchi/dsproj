@@ -2,7 +2,6 @@
 *	This file has Namenode main and other functionalities
 *	This is to be executed in the namenode server
 */
-#include <stdio.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>

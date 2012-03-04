@@ -83,4 +83,7 @@ int create_replica(char *path, char *primdn, char *repdn)
 	{
 		printf("File not present.. So, I should do replication\n");
 	}
+	// Get the file contents from primdn..
+
+	// Write the contents in repdn..
 }
