@@ -3,13 +3,13 @@
 #define _dd_h
 typedef struct stdata 
 { 
-int nno; 
+int nno;       
 int pno;
 char fname[MAX_PATH];
 char dname[REP][SERV_PATH];
 char loc[MAX_PATH];
 int dflag;
-int dsync[REP];
+int dsync[REP]; // 1 - Sync  0-Not Set 2-Unsync
 } datadef; 
 int nodeno;
 
@@ -20,7 +20,7 @@ struct list *next;
 struct list *prev; 
 struct list *fold;
 }node; 
-node *head = DNULL;
+node *head = DNULL;  // Head node Root
 void printdata(node* temp);
 void parsepath(char* ans,char* vpath);
 void parserpath(char* ans,char* vpath);
