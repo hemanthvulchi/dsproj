@@ -384,6 +384,7 @@ int receivecommand_namenode()
      		printf("\nSocket Command: in GETATTR");
 			char *path;
 			path = strtok(NULL,",");
+			//Return a datanode, where file can be created
 			dpath = getdatanode(path,host);
 
 			printf("User is trying to access something..%s \n",dpath);

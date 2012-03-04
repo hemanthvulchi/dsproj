@@ -6,6 +6,7 @@
 #include<stdlib.h>
 #include "global.h"
 #include "dd.h"
+#include "list.c"
 node* prev = DNULL; 
 node* fold = DNULL;
 
@@ -238,7 +239,7 @@ node *searchloc(node* temp,char* vpath)
 			} 
 		}		
 	printf("\nError in search, no Node found\n");
-	exit(0);
+	return DNULL;
 }
 
 int findlch(char *stemp, char ctemp)
@@ -446,10 +447,77 @@ node *addfolder(char *fname,char *dname,char *loc)
 
 char *getdatanode(char* path,char* host)
 {
-//	node *tnode;
-//	tnode=search(path);
-//	return tnode->data.dname[0];	
-	return "lisp.rutgers.edu";
+	int i=0,fh=-1;
+	node *tnode;
+	tnode=search(path);
+	if(tnode!=DNULL)
+	{
+		while(i<REP)
+		{
+			if((strcmp( tnode->data.dname[i],host)==0) && tnode->data.dsync[i]==1);		
+			{
+				fh=i;
+				break;
+			}
+			i++;
+		}
+		if(fh!=-1)
+		return tnode->data.dname[fh];
+		i=0;
+		while(i<REP)
+		{
+			if( tnode->data.dsync[i]==1);	
+			{
+				fh=i;				
+				break;
+			}
+			i++;
+		}
+		if(fh!=-1)
+			return tnode->data.dname[fh];
+
+
+		i=0;
+		while(i<REP)
+		{
+			if(( tnode->data.dsync[i]==2) && (strcmp( tnode->data.dname[i],host)==0) );	
+			{
+				fh=i;				
+				break;
+			}
+			i++;
+		}
+		if(fh!=-1)
+			return tnode->data.dname[fh];
+		i=0;
+		while(i<REP)
+		{
+			if(( tnode->data.dsync[i]==2)  );	
+			{
+				fh=i;				
+				break;
+			}
+			i++;
+		}
+		if(fh!=-1)
+			return tnode->data.dname[fh];
+		
+		printf("Error: No data node found \n");
+		return "lisp.rutgers.edu";
+
+	}
+		//Check if client is a datanode itself
+
+		datanode *dn=datanode_search(host);
+		if (dn!=NULL)
+		return dn->node;
+	
+		dn=fetch_datanode();
+		if (dn!=NULL)
+		return dn->node;		
+
+		printf("No data node found \n");		
+		return "lisp.rutgers.edu";
 }
 
 
@@ -467,7 +535,7 @@ int storelist(node* thead,char* fpath)
 	if (ifp == NULL) 
 	{
 		fprintf(stderr, "Can't open input file in.list!\n");
-		exit(1);
+		return -1;
 	}
 	printf("calling recursive store list \n");
 	recursestore(ifp,thead);
