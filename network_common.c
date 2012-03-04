@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/stat.h>
 #include <dirent.h>
 
 int hostname_to_ip(char *hostname, char *ip)
@@ -36,18 +37,33 @@ int hostname_to_ip(char *hostname, char *ip)
         return 1;
 }
 
+// 0 if file exists, 1 if file does not exist
+static int fexist(char *filename)
+{
+  struct stat buffer;
+  if ( stat(filename, &buffer) ) return 1;
+  return 0;
+}
+
 //Checks if a datanode is alive..
 // 1 - alive.. 0 - dead
 int check_nodealive(char *name)
 {
+	printf("Check nodealive %s\n",name);
+	printf("Ping success %d\n",pingsuccess);
+	if(name == NULL)
+		return 0;
         sendping(name);
         int counter = 0;
         while(pingsuccess != 1)
         {
-                sleep(1);
+                usleep(1);
                 counter++;
                 if(counter > 100)
+		{
+			printf("poruthathu pothum pongi elu\n");
                         return 0;
+		}
         }
 
         return 1;

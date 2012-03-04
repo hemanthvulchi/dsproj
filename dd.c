@@ -449,6 +449,7 @@ char *getdatanode(char* path,char* host)
 {
 	int i=0,fh=-1;
 	node *tnode;
+	printf("get data node\n");
 	tnode=search(path);
 	if(tnode!=DNULL)
 	{
@@ -507,17 +508,26 @@ char *getdatanode(char* path,char* host)
 
 	}
 		//Check if client is a datanode itself
-
+	printf("Else part\n");
 		datanode *dn=datanode_search(host);
+		printf("I am here\n");
 		if (dn!=NULL)
+		{
+			printf("first\n");
 		return dn->node;
-	
+		}
+		printf("Before fetch\n");
 		dn=fetch_datanode();
+		printf("After fetch\n");
 		if (dn!=NULL)
+		{
+			printf("first 1\n");
 		return dn->node;		
+		}
 
 		printf("No data node found \n");		
-		return "lisp.rutgers.edu";
+		//return "lisp.rutgers.edu";
+		return NULL;
 }
 
 
