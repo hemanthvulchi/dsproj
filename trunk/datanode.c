@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 			printf("Error in creating datanode directories.. Cannot procede\n");
 		}
 	}
-	chmod ("/tmp/CS545/datanode/",0777);
+	chmod (DATANODE_DIR,0777);
 
 	// This basically means that I should manually shutdown this namenode, or else it will always be running.
 	// But what about other receivers? which one will I put as first. 

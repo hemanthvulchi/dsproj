@@ -1,8 +1,8 @@
 #ifndef _global_h
 #define _global_h
 
-#define DATANODE_PATH "/tmp/CS545/"
-#define DATANODE_DIR "/tmp/CS545/datanode/"
+#define DATANODE_PATH "/tmp/CS545"
+#define DATANODE_DIR "/tmp/CS545/datanode"
 #define PING_PORT 8011
 #define COMMAND_PORT 8012
 #define RESPONSE_PORT 8013
