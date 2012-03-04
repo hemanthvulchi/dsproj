@@ -1,9 +1,14 @@
 #ifndef _global_h
 #define _global_h
 
+#define DATANODE_PATH "/tmp/CS545/"
+#define DATANODE_DIR "/tmp/CS545/datanode/"
 #define PING_PORT 8011
 #define COMMAND_PORT 8012
 #define RESPONSE_PORT 8013
+
+#define REPLICATION_PORT 8019
+
 #define ACCESS "access"
 #define GETATTR "getattr"
 #define DATANODE "datanode"
@@ -25,6 +30,10 @@
 #define REP  5
 #define MAX_PATH 100
 #define SERV_PATH 100
+
+
+#define R_FILEEXIST "replica_fileexists"
+char *R_COMMAND_NAME;
 char *COMMAND_NAME;
 char getattr_buf[1000];
 //struct readdir_list *rlist_all[1024];
@@ -42,4 +51,6 @@ char rmdir_retbuf[100];
 char statvfs_retbuf[1000];
 char rename_buf[10];
 char chmod_buf[10];
+
+char r_fexist_buf[100];
 #endif

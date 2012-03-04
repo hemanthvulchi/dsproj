@@ -20,7 +20,8 @@
 #include "ping.c"
 #include "socket_command.c"
 
-char tmp_path[100] = "/tmp/shyam-fuse";
+//char tmp_path[100] = "/tmp/shyam-fuse";
+char tmp_path[100] = "/tmp/CS545/datanode/";
 
 char *namenode = NULL;
 
@@ -919,7 +920,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 	memset(my_path,'\0',100);
         strcpy(my_path,tmp_path);
         strcat(my_path,path);
-	/*
+	
 	// I have to send the path from here to the namenode..
         // Get back the list of files..
         COMMAND_NAME = malloc (1+sizeof(char)*strlen(WRITE));
@@ -975,7 +976,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 	stbuf->f_flag = atoi(tmp);
 	tmp = strtok(NULL,",");
 	stbuf->f_namemax = atoi(tmp);
-	*/
+	
 	return 0;
 }
 
