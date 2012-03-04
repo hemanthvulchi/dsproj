@@ -122,6 +122,7 @@ int receiveping()
 	while (1)
 	{
 		printf("Ping waiting\n");
+		memset(buf1,'\0',100);
         	rc = recvfrom(socketb, buf1, 100, 0, &senderaddress, &slen);
 		printf("Ping message received\n");
         	if (rc == 0)
@@ -129,6 +130,7 @@ int receiveping()
         	else if (rc == -1)
         		printf("recv() failed\n");
 
+		printf("Buf1 in ping %s\n",buf1);
 		//Write some breaking function here..
 		// As of now, Idea is to keep waiting, if u want to break.. set a variable somewhere.. notify some node, which will ping back in acknowledgement..
 		// This will make me reach this point from recvfrom.. and i will do a break here..

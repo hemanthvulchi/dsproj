@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	int counter = 0;
 	while(pingsuccess != 1)
 	{
-		sleep(1);
+		usleep(1);
 		counter++;
 	}
 	printf("After success %d\n",counter);

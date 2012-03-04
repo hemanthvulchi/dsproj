@@ -30,6 +30,7 @@
 #define REP  5
 #define MAX_PATH 100
 #define SERV_PATH 100
+#define JUNK "Adasdadasdasda"
 
 
 #define R_FILEEXIST "replica_fileexists"
@@ -52,8 +53,9 @@ char statvfs_retbuf[1000];
 char rename_buf[10];
 char chmod_buf[10];
 char datanode_namenode[SERV_PATH];
-
+char namenode_configfile[120];
 int pingsuccess = 1;
+int clientreceive_success = 1;
 
 char r_fexist_buf[100];
 #endif

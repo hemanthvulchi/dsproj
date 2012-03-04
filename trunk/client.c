@@ -48,6 +48,7 @@ static int my_getattr(const char *path, struct stat *stbuf)
                 exit(1);
         }
 	printf("\nGetattr sent thread");
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, GETATTR) == -1)
 	{
 		printf("\nGetattr before thread kill");
@@ -57,6 +58,19 @@ static int my_getattr(const char *path, struct stat *stbuf)
 	}
 	// now receive response and do something..
 	printf("\nGetattr before join");
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
 	pthread_join(recvcmd_thread, NULL);
 	free(COMMAND_NAME);
 	
@@ -160,6 +174,7 @@ static int xmp_access(const char *path, int mask)
                 snprintf(buffer, 10,"%d",mask);
 		strcat(my_path,",");
 		strcat(my_path,buffer);
+		clientreceive_success = 0;
 		if (sendcommand(namenode, my_path, ACCESS) == -1)
        		{
 			printf("Send command failed\n");
@@ -168,10 +183,25 @@ static int xmp_access(const char *path, int mask)
                		return -1;
        		}
 		printf("Waiting for pthread join\n");
-		pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+		printf("Client REceive Success %d\n", clientreceive_success);
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+		printf("Client REceive Success %d\n", clientreceive_success);
+		//pthread_join(recvcmd_thread, NULL);
        		free(COMMAND_NAME);
 	}
-	printf("After pthread join\n");
+	printf("After pthread join %s 1\n",access_retbuf);
 	char *ptr = strtok(access_retbuf,",");
 	if (ptr == NULL) printf("watha res\n");
 	int res = atoi(ptr);
@@ -219,7 +249,8 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 printf("Name node not to able to initiate receive comamnd thread\n");
                 free(COMMAND_NAME);
                 exit(1);
-        }
+        }	
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, READDIR) == -1)
         {
 		printf("Send command failed\n");
@@ -228,7 +259,20 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 	printf("End of command\n");
 
@@ -291,6 +335,7 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 	strcat(my_path,buffer);
 	strcat(my_path,",");
 	printf("MyPath %s\n", my_path);
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, MKNOD) == -1)
         {
 		printf("Send command failed\n");
@@ -299,7 +344,20 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 
 	
@@ -362,6 +420,7 @@ static int xmp_mkdir(const char *path, mode_t mode)
 		strcat(my_path, buf);
 	printf("client.c makedir after adding buf to path\n");
 	
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, MKDIR) == -1)
         {
 		printf("Send command failed\n");
@@ -371,8 +430,21 @@ static int xmp_mkdir(const char *path, mode_t mode)
         }
 	printf("Make dir: Command Sent\n");        
 	printf("Waiting for pthread join\n");
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
 	pthread_join(recvcmd_thread, NULL);
-        free(COMMAND_NAME);
+        //free(COMMAND_NAME);
 	printf("End of command\n");
 
 /*
@@ -415,6 +487,7 @@ static int xmp_unlink(const char *path)
                 free(COMMAND_NAME);
                 exit(1);
         }
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, UNLINK) == -1)
         {
 		printf("Send command failed\n");
@@ -423,7 +496,20 @@ static int xmp_unlink(const char *path)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 
 	//res = unlink(my_path);
@@ -458,6 +544,7 @@ static int xmp_rmdir(const char *path)
                 free(COMMAND_NAME);
                 exit(1);
         }
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, RMDIR) == -1)
         {
 		printf("Send command failed\n");
@@ -466,7 +553,20 @@ static int xmp_rmdir(const char *path)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 
 	//res = rmdir(path);
@@ -521,6 +621,7 @@ static int xmp_rename(const char *from, const char *to)
 		strcat(my_path, my_tpath);
 //		printf("client.c rename after adding buf to path\n");
 	
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, RENAME) == -1)
         {
 		printf("Send command failed\n");
@@ -529,7 +630,20 @@ static int xmp_rename(const char *from, const char *to)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 	printf("End of command\n");
 
@@ -594,6 +708,7 @@ static int xmp_chmod(const char *path, mode_t mode)
 		strcat(my_path, buf);
 //		printf("client.c chmod after adding buf to path\n");
 	
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, CHMOD) == -1)
         {
 		printf("Send command failed\n");
@@ -602,7 +717,20 @@ static int xmp_chmod(const char *path, mode_t mode)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 	printf("End of command\n");
 
@@ -669,6 +797,7 @@ static int xmp_truncate(const char *path, off_t size)
 	snprintf(buffer,10,"%d",size);
 	strcat(my_path,buffer);
 	strcat(my_path,",");
+	clientreceive_success = 0;
 	if (sendcommand(namenode, my_path, TRUNCATE) == -1)
         {
 		printf("Send command failed\n");
@@ -677,7 +806,20 @@ static int xmp_truncate(const char *path, off_t size)
                 return -1;
         }
 	printf("Waiting for pthread join\n");
-	pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+	//pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 	
 	//res = truncate(path, size);
@@ -746,7 +888,20 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
                 return -1;
         }
         printf("Waiting for pthread join\n");
-        pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+        //pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
         printf("End of command\n");
 
@@ -803,7 +958,20 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
                 return -1;
         }
         printf("Waiting for pthread join\n");
-        pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+        //pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
         printf("End of command\n");
 
@@ -887,7 +1055,20 @@ static int xmp_write(const char *path, const char *buf, size_t size,
                 return -1;
         }
         printf("Waiting for pthread join\n");
-        pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+        //pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
         printf("End of command\n");
 
@@ -942,7 +1123,20 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
                 return -1;
         }
         printf("Waiting for pthread join\n");
-        pthread_join(recvcmd_thread, NULL);
+	int counter = 0;
+	while(clientreceive_success != 1)
+	{
+		usleep(10);
+		counter++;
+		if(counter > 100)
+		{
+			printf("Enough waiting\n");
+			pthread_kill(recvcmd_thread,0);
+        		free(COMMAND_NAME);
+			return -1;
+		}
+	}
+        //pthread_join(recvcmd_thread, NULL);
         free(COMMAND_NAME);
 
 	//res = statvfs(path, stbuf);

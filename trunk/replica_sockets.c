@@ -49,14 +49,6 @@ int sendcommand_replica(char *node, char *cmd, char *path)
    	return 0;
 }
 
-// 0 if file exists, 1 if file does not exist
-int fexist(char *filename) 
-{
-  struct stat buffer;
-  if ( stat(filename, &buffer) ) return 1;
-  return 0;
-}
-
 int receivecommand_replica()
 {
 	printf("Receive Replica\n");

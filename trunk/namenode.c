@@ -30,12 +30,13 @@ int main(int argc, char *argv[])
 {
 	pthread_t recvping_thread;
 	int ping_rc = pthread_create(&recvping_thread, NULL, receiveping, NULL);
-
+	
         if (ping_rc)
         {
                 printf("receive ping thread create error\n");
                 exit(1);
         }
+	init();
 	pthread_t recvcmd_thread;
 	int cmd_rc = pthread_create(&recvcmd_thread, NULL, receivecommand_namenode, NULL);
 	if (cmd_rc)
