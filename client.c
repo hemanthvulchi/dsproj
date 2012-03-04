@@ -21,7 +21,7 @@
 #include "socket_command.c"
 
 //char tmp_path[100] = "/tmp/shyam-fuse";
-char tmp_path[100] = "/tmp/CS545/datanode/";
+char tmp_path[100] = "/tmp/CS545/datanode";
 
 char *namenode = NULL;
 
