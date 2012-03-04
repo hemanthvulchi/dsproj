@@ -20,7 +20,8 @@ int main()
 {
 	//Initialize all the linked lists.. Just warm up.. :)
 	int i=0;
-	printf("function started");
+	printf("function started\n");
 	i=   dummymain();
-	printf("function ended");
+	printf("function ended\n");
+
 }

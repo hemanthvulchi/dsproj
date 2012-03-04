@@ -5,7 +5,7 @@ typedef struct stdata
 { 
 int nno; 
 int pno;
-char fname[MAXF];
+char fname[MAX_PATH];
 char dname[REP][SERV_PATH];
 char loc[MAX_PATH];
 int dflag;
@@ -44,4 +44,5 @@ char *getdatanode(char* path,char* host);
 int dummymain();
 int storelist(node* thead,char* fpath);
 void recursestore(FILE* tfp, node* tnode);
+node* recoverlist(char* fpath);
 #endif
