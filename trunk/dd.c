@@ -11,9 +11,14 @@ node* fold = DNULL;
 
 void printdata(node* temp)
 {
+		int i;
 		datadef tdata;
 		tdata=temp->data;
-  	printf("\nNode Number \t:%d \nParent Node \t:%d \n File:%d \nFile Name \t:%s\nData Node \t:%s\nPath \t:%s",tdata.nno,tdata.pno,tdata.dflag,tdata.fname,tdata.dname[0],tdata.loc);
+  	printf("\nNode Number \t:%d \nParent Node \t:%d \n File:%d \nFile Name \t:%s\nData Node \t:%s\nPath \t:%s\n",tdata.nno,tdata.pno,tdata.dflag,tdata.fname,tdata.dname[0],tdata.loc);
+	for(i=0;i<REP;i++)
+	{
+		printf("Dname:%s Dsync:%d   \n",tdata.dname[i],tdata.dsync[i]);
+	}
 }
 
 /**************************************
@@ -101,14 +106,25 @@ void removepath(char* ans,char* vpath)
 }
 node *create_node(datadef vdata) 
 { 
-node *new1; 
-new1 = malloc(sizeof(node)); 
-new1->data.dflag=0;
-new1->data=vdata;
-new1->next = DNULL; 
-new1->prev = DNULL; 
-new1->fold = DNULL;
-return(new1); 
+	int i=0;
+	node *new1; 
+	new1 = malloc(sizeof(node)); 
+	new1->data.dflag=0;
+	new1->data.nno=0;
+	new1->data.pno=0;
+	memset(new1->data.fname,'\0',MAX_PATH);
+	for(i=0;i<REP;i++)
+		strcpy(new1->data.dname[i],"none");
+	memset(new1->data.loc,'\0',MAX_PATH);
+	new1->data.dflag=0;
+	for(i=0;i<REP;i++)
+		new1->data.dsync[i]=0;
+
+	new1->data=vdata;
+	new1->next = DNULL; 
+	new1->prev = DNULL; 
+	new1->fold = DNULL;
+	return(new1); 
 } 
 /************************************
 Function not used at present
@@ -127,13 +143,16 @@ return(new1);
 
 
 void  ninitialize() 
-{ 
+{
+int i; 
 node *new1;
 new1 = malloc(sizeof(node)); 
 new1->data.dflag=1;
 new1->data.nno=1;
 new1->data.pno=0;
 strcpy(new1->data.loc,"Root");
+for(i=0;i<REP;i++)
+	strcpy(new1->data.dname[i],"none");
 strcpy(new1->data.dname[0],"Root");
 strcpy(new1->data.fname,"home");
 new1->next = DNULL; 
@@ -376,8 +395,20 @@ int removefold(char* vpath)
 
 node *addfile(char *fname,char *dname,char *loc)
 {
+	int i;	
 	datadef tdata;
 	node *tnode;
+	tdata.dflag=0;
+	tdata.nno=0;
+	tdata.pno=0;
+	memset(tdata.fname,'\0',MAX_PATH);
+	for(i=0;i<REP;i++)
+		strcpy(tdata.dname[i],"none");
+	memset(tdata.loc,'\0',MAX_PATH);
+	tdata.dflag=0;
+	for(i=0;i<REP;i++)
+		tdata.dsync[i]=0;
+
 	strcpy(tdata.fname,fname);
 	strcpy(tdata.dname[0],dname);
 	tdata.dsync[0]=1;
@@ -390,8 +421,19 @@ node *addfile(char *fname,char *dname,char *loc)
 
 node *addfolder(char *fname,char *dname,char *loc)
 {
+	int i;
 	datadef tdata;
 	node *tnode;
+	tdata.dflag=0;
+	tdata.nno=0;
+	tdata.pno=0;
+	memset(tdata.fname,'\0',MAX_PATH);
+	for(i=0;i<REP;i++)
+		strcpy(tdata.dname[i],"none");
+	memset(tdata.loc,'\0',MAX_PATH);
+	tdata.dflag=0;
+	for(i=0;i<REP;i++)
+		tdata.dsync[i]=0;
 	strcpy(tdata.fname,fname);
 	strcpy(tdata.dname[0],dname);
 	tdata.dsync[0]=1;
@@ -421,14 +463,14 @@ int storelist(node* thead,char* fpath)
     char sFfname[100], sFdn[100];
     	char buffer[1000];
 	ifp = fopen("data.txt", "a+");
-	printf("Store list")'
+	printf("Store list\n");
 	if (ifp == NULL) 
 	{
 					fprintf(stderr, "Can't open input file in.list!\n");
 		exit(1);
 	}
-
-	recursestore(ifp,head);
+	printf("calling recursive store list \n");
+	recursestore(ifp,thead);
 /*	
 	while (fscanf(ifp, "%d %s %s %d", &iFlno,sFfname, sFdn,&iFrn) != EOF) 
 	{
@@ -442,20 +484,30 @@ int storelist(node* thead,char* fpath)
 
 void recursestore(FILE* tfp, node* tnode)
 {
+	if(tnode==DNULL)
+		printf("tnode is null\n");
  	char buffer[1000];
  	char tbuff[1000];
 	int i=0;		
+    
+	printdata(tnode);
+
+
 	memset(buffer,'\0',1000);
 	memset(tbuff,'\0',1000);
 	snprintf(tbuff,10,"%d",tnode->data.nno);
 	strcat(buffer,tbuff);
+
+
 	strcat(buffer,",");
 	memset(tbuff,'\0',1000);
 	snprintf(tbuff,10,"%d",tnode->data.pno);
 	strcat(buffer,tbuff);
+
 	strcat(buffer,",");
 	strcat(buffer,tnode->data.fname);
 	strcat(buffer,",");
+
 	for(i=0;i<REP;i++)
 	{
 		strcat(buffer,tnode->data.dname[i]);
@@ -464,30 +516,130 @@ void recursestore(FILE* tfp, node* tnode)
 	strcat(buffer,tnode->data.loc);
 	strcat(buffer,",");	
 	memset(tbuff,'\0',1000);
-	snprintf(tbuff,10,"%d",tnode->data.dflag);;
+	snprintf(tbuff,10,"%d",tnode->data.dflag);
 	strcat(buffer,tbuff);
 	strcat(buffer,",");
 	for(i=0;i<REP;i++)
 	{
-		memset(tbuff,'\0',1000);
-		snprintf(tbuff,10,"%d",tnode->data.dsync[REP]);
+		memset(tbuff,'\0',100);
+		snprintf(tbuff,10,"%d",tnode->data.dsync[i]);
 		strcat(buffer,tbuff);
 		strcat(buffer,",");	
 	}
 		strcat(buffer,"ENDD\n");	
 		fprintf(tfp, "%s", buffer);
-		if(tnode->fold!=NULL)
-			recursestore(tnode->fold,tfp);
-		if(tnode->next!=NULL)
-			recursestore(tnode->next,tfp);			
+		if(tnode->fold!=DNULL)
+		{
+	//		tnode=tnode->fold;
+			printdata(tnode);
+			
+			recursestore(tfp,tnode->fold);
+		}
+		if(tnode->next!=DNULL)
+		{
+
+//			tnode=tnode->next;
+			printdata(tnode);
+			recursestore(tfp,tnode->next);			
+		}
 	
 }
 
+node* recoverlist(char* fpath)
+{
+FILE* ifp;
+char buffer[1000];
+char *ptr;
+int i=0;
+datadef tdata;
+node *tnode;
+printf("Starting to rebuild file system\n");
+ifp = fopen(fpath, "r");
+printf("Opening File\n");
+if (ifp == NULL) 
+	{
+		fprintf(stderr, "File not present.\n Intialising database\n");
+		ninitialize();
+		return head;
+	}
+	printf("File Opened\n");
+	while (fscanf(ifp, "%s", &buffer) != EOF)
+	{
+		printf("Buffer:%s\n",buffer);
+		if(i==0)
+		{
+			ptr = strtok(buffer,",");			
+			tdata.nno=atoi(ptr);
+			printf("nno: %d\n",tdata.nno);			
+			ptr = strtok(NULL,",");
+			tdata.pno=atoi(ptr);
+			printf("pno: %d\n",tdata.pno);			
+			ptr = strtok(NULL,",");
+			strcpy(tdata.fname,ptr);
+			printf("fname: %s\n",tdata.fname);
+			for(i=0;i<REP;i++)
+			{
+				ptr = strtok(NULL,",");
+				strcpy(tdata.dname[i],(ptr));
+				printf("dname: %s i:%d\n",ptr,i);			
+			}
+			printf("Fourth \n");
+			ptr = strtok(NULL,",");
+			strcpy(tdata.loc,ptr);
+			printf("loc=%s\n",tdata.loc);
+			ptr = strtok(NULL,",");
+			tdata.dflag=atoi(ptr);
+			printf("dflag=%d\n",tdata.dflag);
+			for(i=0;i<REP;i++)
+			{
+				ptr = strtok(NULL,",");
+				tdata.dsync[i]=atoi(ptr);
+				printf("In Look %d val=%d \n",i,tdata.dsync[i]);
+			}
+			printf("Opening File- Creating Head\n");
+			head=create_node(tdata);
+			printdata(head);
+			i++;
+		}
+		else
+		{
+			printf("Opening File- reading other nodes\n");
+			char *ptr = strtok(buffer,",");			
+			tdata.nno=atoi(ptr);
+			ptr = strtok(NULL,",");
+			tdata.pno=atoi(ptr);
+			ptr = strtok(NULL,",");
+			strcpy(tdata.fname,ptr);
+			for(i=0;i<REP;i++)
+			{
+				ptr = strtok(NULL,",");
+				strcpy(tdata.dname[i],(ptr));
+			}
+			ptr = strtok(NULL,",");
+			strcpy(tdata.loc,ptr);
+			ptr = strtok(NULL,",");
+			tdata.dflag=atoi(ptr);
+			for(i=0;i<REP;i++)
+			{
+				ptr = strtok(NULL,",");
+				tdata.dsync[i]=atoi(ptr);
+			}
+			printf("Opening File- looking for other nodes\n");
+			tnode=addnode(tdata.loc,tdata);
+			printdata(tnode);
+		}
+	}
+	return head;
+	fclose(ifp);
+}
 
 int dummymain() 
 { 
+printf("inside dummymain");
 node *nnode,*tnode,*fnode;
-printf("\n Started");
+printf("Started\n");
+head=recoverlist("data.txt");
+/*
 ninitialize();
 printf("\nInitialized");
 nnode=addfile("file1","dpath","home");
@@ -508,6 +660,11 @@ printdata(fnode);
 storelist(head,"dummy");
 free(nnode);
 free(head);
+//*/
+printf("My search \n");
+fnode=search("home/fold1/file3");
+printdata(fnode);
+
 printf("\n");
 return 0;
 }
