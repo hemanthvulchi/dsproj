@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include "network_common.c"
+#include "global.h"
 
 // -1 - Failure 
 int sendping(char *node)
@@ -39,14 +40,8 @@ int sendping(char *node)
 	// this is code to send message
 	char buf[15] = "ping"; 
 	int ret = sendto(socketa, buf, strlen(buf), 0, &sendaddress, slen);
-    	if (ret == 0)
-    	{
-        	printf("Send failed\n");
-    	}
-    	else if (ret == -1)
-    	{
-        	printf("send() failed\n");
-    	}
+    	if (ret == 0) printf("Send failed\n");
+    	else if (ret == -1) printf("send() failed\n");
    	shutdown(socketa,2);
    	return 0;
 }
@@ -75,11 +70,8 @@ static int sendping1(char *node, char *msg)
 	memset(buf,'\0',15);
 	strcpy(buf,msg);
         int ret = sendto(socketa, buf, strlen(buf), 0, &sendaddress, slen);
-        if (ret == 0)
-        {
-                printf("Send failed\n");
-        }        else if (ret == -1)        {
-                printf("send() failed\n");        }
+        if (ret == 0) printf("Send failed\n");
+        else if (ret == -1) printf("send() failed\n"); 
         shutdown(socketa,2);
         return 0;
 }
@@ -89,7 +81,6 @@ static int sendping1(char *node, char *msg)
 // May be call a function on a successful receive
 int receiveping()
 {
-	printf("REceive Ping\n");
 	struct sockaddr_in receiveaddress, senderaddress;
 	
 	// create Non-Blocking socket to send message
@@ -121,23 +112,21 @@ int receiveping()
 	char serv[100];
 	while (1)
 	{
-		printf("Ping waiting\n");
 		memset(buf1,'\0',100);
         	rc = recvfrom(socketb, buf1, 100, 0, &senderaddress, &slen);
-		printf("Ping message received\n");
         	if (rc == 0)
         		printf("Receive failed\n");
         	else if (rc == -1)
         		printf("recv() failed\n");
 
-		printf("Buf1 in ping %s\n",buf1);
+		//printf("Buf1 in ping %s\n",buf1);
 		//Write some breaking function here..
 		// As of now, Idea is to keep waiting, if u want to break.. set a variable somewhere.. notify some node, which will ping back in acknowledgement..
 		// This will make me reach this point from recvfrom.. and i will do a break here..
 		if (strcmp(buf1,"ping")==0)
 		{
 			getnameinfo(&senderaddress, slen, host, sizeof(host), serv, sizeof(serv), 0);
-			printf("Ping received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
+			//printf("Ping received from %s, host %s\n",inet_ntoa(senderaddress.sin_addr),host);
 			sendping1(host,"fucku");
 			//proper ping, call some function here..
 			//May be intimate some process.
