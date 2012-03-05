@@ -3,6 +3,7 @@
 
 #define DATANODE_PATH "/tmp/CS545"
 #define DATANODE_DIR "/tmp/CS545/datanode"
+#define DATANODE_DIR_LEN strlen(DATANODE_DIR)
 #define PING_PORT 8011
 #define COMMAND_PORT 8012
 #define RESPONSE_PORT 8013
@@ -25,6 +26,9 @@
 #define STATFS "statfs"
 #define CHMOD "chmod"
 #define RENAME "rename"
+#define SHUTDOWN "shutdown"
+#define DNLIST "dnlist"
+#define SENDREP "senrep"
 #define DNULL 0 
 #define EOS '\0'
 #define MAXF 200
@@ -32,6 +36,8 @@
 #define MAX_PATH 100
 #define SERV_PATH 100
 #define JUNK "Adasdadasdasda"
+#define DN_COMMAND "dn_command"
+#define DISP_RESULTS "disp_results"
 
 #define MONITOR "monitor"
 
@@ -58,6 +64,7 @@ char statvfs_retbuf[1000];
 char rename_buf[10];
 char chmod_buf[10];
 char datanode_namenode[SERV_PATH];
+char monitor_namenode[SERV_PATH];
 char namenode_configfile[120];
 int pingsuccess = 1;
 int clientreceive_success = 1;
@@ -65,4 +72,6 @@ int datanoderesponse_success = 1;
 char r_read_buf[4196];
 char r_write_buf[100];
 char r_fexist_buf[100];
+int replication_count = 0;
+int mkdir_errno 
 #endif

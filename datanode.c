@@ -47,6 +47,11 @@ int main(int argc, char *argv[])
 	{
 		usleep(1);
 		counter++;
+		if(counter > 100)
+		{
+			printf("Namenode not reachable\n");
+			exit(1);
+		}
 	}
 	printf("After success %d\n",counter);
   	// Datanode should contact namenode and let him know that he is available.
@@ -97,9 +102,10 @@ int main(int argc, char *argv[])
 	// This basically means that I should manually shutdown this namenode, or else it will always be running.
 	// But what about other receivers? which one will I put as first. 
         // pthread_join(recvping_thread,NULL);
-	while (1)
+	/*while (1)
 	{
 		pthread_yield(NULL);
-	}
+	}*/
+	pthread_join(recvcmd_thread,NULL);
 	return 0;
 }

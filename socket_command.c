@@ -58,17 +58,10 @@ int sendcommand(char *node, char *path, char *cmd)
 	strcat(buf,path);
 	
 	int ret = sendto(socketa, buf, strlen(buf), 0, &sendaddress, slen);
-    	if (ret == 0)
-    	{
-        	printf("Send failed\n");
-		return -1;
-    	}
-    	else if (ret == -1)
-    	{
-        	printf("send() failed\n");
-		return -1;
-    	}
-	printf("Sending done\n");
+
+    	if (ret == 0) printf("Send failed\n");
+    	else if (ret == -1) printf("send() failed\n");
+	else printf("Sending done\n");
    	shutdown(socketa,2);
    	return 0;
 }
@@ -129,7 +122,7 @@ int receivecommand_server()
 		// This will make me reach this point from recvfrom.. and i will do a break here..
 		if (strcmp(cmd,GETATTR)==0)
 		{
-     		printf("\nSocket Command: in GETATTR");
+     			printf("\nSocket Command: in GETATTR");
 			char *path;
 			path = strtok(NULL,",");
 			printf("User is trying to access something.. \n");
@@ -319,7 +312,6 @@ int receivecommand_namenode()
 {
 	printf("Receive namenode\n");
 	struct sockaddr_in receiveaddress, senderaddress;
-	char *dpath=NULL;
 	// create Non-Blocking socket to send message
         int socketb = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (socketb == -1)
@@ -349,6 +341,7 @@ int receivecommand_namenode()
 	char host[100];
 	char serv[100];
 	char *cmd;
+	char *dpath=NULL;
 	while (1)
 	{
 		printf("Waiting to receive - Namenode\n");
@@ -384,7 +377,8 @@ int receivecommand_namenode()
 			char *path;
 			path = strtok(NULL,",");
 			//Return a datanode, where file can be created
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 
 			if (dpath == NULL)
 			{
@@ -416,7 +410,8 @@ int receivecommand_namenode()
       			path = strtok(NULL,",");
 			printf("Path : %s\n",path);
 			char *mask = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			if (dpath == NULL)
 			{
 				printf("User is trying to access something..%s \n",dpath);
@@ -437,7 +432,8 @@ int receivecommand_namenode()
 			char *path = NULL;
 			path = strtok(NULL, ",");
 			printf("Path : %s\n",path);
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			if (dpath == NULL)
 			{
 				printf("Doing a Readdir.. %s %s\n",dpath, host);
@@ -457,7 +453,8 @@ int receivecommand_namenode()
 			printf("In open\n");
 			char *path = strtok(NULL,",");
 			printf("Path : %s\n",path);
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Open file.. \n");
 			if(dpath == NULL)
 			{
@@ -470,13 +467,15 @@ int receivecommand_namenode()
                 		printf("Send command to datanode failed\n");
 				continue;
         		}
+				filenode_insert(path,0,0,dpath);
 			}
 		}
 		else if(strcmp(cmd,READ)==0)
 		{
 			printf("\nIn read\n");
 			char *path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("User is trying Read.. \n");
 			if (dpath == NULL)
 				sendresponse_read(host,JUNK,0,0);
@@ -493,7 +492,8 @@ int receivecommand_namenode()
     		{
       			printf("In write\n");
       			char *path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Write!!!!!!!!!!!!.. \n");
 			if (dpath == NULL)
 				sendresponse_write(host,JUNK,0,0,JUNK);
@@ -504,6 +504,7 @@ int receivecommand_namenode()
           			printf("Send command to datanode failed\n");
 				continue;
       			}
+				filenode_insert(path,0,0,dpath);
 			}
     		}
 		else if(strcmp(cmd,MKDIR)==0)
@@ -512,7 +513,8 @@ int receivecommand_namenode()
 			char *path;
 			path = strtok(NULL, ",");
 			printf("mkdir found path path:%s\n",path);
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("I am making a dir.. dpath:%s\n",dpath);
 			if (dpath == NULL)
 				sendresponse_mkdir(host,JUNK,0);
@@ -523,6 +525,7 @@ int receivecommand_namenode()
                 		printf("Send command to datanode failed\n");
 				continue;
         		}
+				filenode_insert(path,0,0,dpath);
 			}
 		}
 		else if(strcmp(cmd,MKNOD)==0)
@@ -530,7 +533,8 @@ int receivecommand_namenode()
 			printf("In mknod\n");
 			char *path;
 			path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Making Node.... \n");
 			if (dpath == NULL)
 				sendresponse_mknod(host,JUNK,0,0);
@@ -541,6 +545,7 @@ int receivecommand_namenode()
                 		printf("Send command to datanode failed\n");
 				continue;
         		}
+				filenode_insert(path,0,0,dpath);
 			}
 		}
 		else if(strcmp(cmd,TRUNCATE)==0)
@@ -548,7 +553,8 @@ int receivecommand_namenode()
 			printf("In truncate\n");
 			char *path;
 			path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Truncate .... \n");
 			if (dpath == NULL)
 				sendresponse_truncate(host,JUNK,0);
@@ -566,7 +572,8 @@ int receivecommand_namenode()
 			printf("In unlink\n");
 			char *path;
 			path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Yeah i am unlinking.. \n");
 			if (dpath == NULL)
 				sendresponse_unlink(host,JUNK);
@@ -584,7 +591,8 @@ int receivecommand_namenode()
 			printf("In rmdir\n");
 			char *path;
 			path = strtok(NULL,",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Remove Directory.. \n");
 			if (dpath == NULL)
 				sendresponse_rmdir(host,JUNK);
@@ -610,7 +618,8 @@ int receivecommand_namenode()
 			printf("In CHMOD\n");
 			char *path;
 			path = strtok(NULL, ",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Changing permission.. \n");
 			if (dpath == NULL)
 				sendresponse_chmod(host,JUNK,0);
@@ -630,7 +639,8 @@ int receivecommand_namenode()
 			char *path;
 			char *dpath;
 			path = strtok(NULL, ",");
-			dpath = getdatanode(path,host);
+			//dpath = getdatanode(path,host);
+			dpath = getfiledn(path,host);
 			printf("Renaming a file.. \n");		
 			if (dpath == NULL)
 				sendresponse_rename(host,JUNK);
@@ -887,6 +897,24 @@ int receivecommand_datanode()
 			if (sendresponse_rename(host,path,dpath) == -1)
 				continue;
 		}
+		else if(strcmp(cmd,SHUTDOWN)==0)
+		{
+			if(strcmp(host,datanode_namenode)==0)
+			{
+				printf("Master Order : Shutdown\n");
+				break;
+			}
+		}
+		else if(strcmp(cmd,DN_COMMAND) == 0)
+		{
+			char *intcmd = strtok(NULL,",");
+			int retval = resolvemonitorcommand(host,intcmd);
+			if (retval == -3)
+			{
+				printf("Master Order : Shutdown\n");
+				break;
+			}
+		}
 		else
 		{
 			printf("Unknown command %s\n",cmd);
@@ -897,7 +925,11 @@ int receivecommand_datanode()
 	return 0;
 }
 
-
+int resolvemonitorcommand(char *node, char *intcmd)
+{
+	if (strcmp(intcmd,SHUTDOWN)==0)
+		return -3;
+}
 
 
 

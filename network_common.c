@@ -1,5 +1,3 @@
-
-
 #ifndef _network_common_c
 #define _network_common_c
 
@@ -13,6 +11,7 @@
 #include <netinet/tcp.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include "global.h"
 
 int hostname_to_ip(char *hostname, char *ip)
 {
@@ -75,7 +74,6 @@ int check_nodealive(char *name)
 
         return 1;
 }
-
 
 // Structure to send list of directories.. :)
 // I am just creating so that later if I have to add anything, I can add.

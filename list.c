@@ -21,20 +21,158 @@ typedef struct _datanode datanode;
 struct _file
 {
 	char name[100];
+	int d_type[50];
+	int d_ino[50];
+	char replica[50][100];
+	int rep[50]; // 0 - not present, 1 - present, 2 or above - not synced.
 };
 typedef struct _file file_d;
 
 struct _filelist
 {
-	file_d FILED;
+	//file_d FILED;
+	char name[100];
+        int d_type[50];
+        int d_ino[50];
+        char replica[50][100];
+        int rep[50]; // 0 - not present, 1 - present, 2 or above - not synced.
+
 	struct _filelist *next;	
 }*sfile,*firstsfile;
+typedef struct _filelist filelist;
 
 void initfilelist(void)
 {
         sfile = NULL;
         firstsfile = NULL;
 }
+filelist * filelist_search(char []);
+
+datanode* datanode_search(char []);
+int filenode_insert(char *name, int type, int ino, char *dn)
+{
+        filelist *p;
+        if( (p=filelist_search(name)) == NULL)
+        {
+                printf("Insert File %s\n",name);
+                p = (struct _filelist*) malloc(sizeof(struct _filelist));
+		memset(p->name,'\0',100);
+                strcpy(p->name,name);
+		printf("Name : %s\n",p->name);
+		initFile(p);
+		int i = getRepcreatenum(p);
+		p->rep[i]=1;
+                strcpy(p->replica[i],dn);
+                p->d_ino[i] = ino;
+                p->d_type[i] = type;
+
+                sfile = firstsfile;
+                if( sfile == NULL )
+                {
+                        sfile = p;
+                        firstsfile = sfile;
+                }
+                else
+                {
+                        while(sfile->next != NULL)
+                                sfile = sfile->next;
+                        sfile->next = p;
+                }
+        }
+        else
+        {
+		int i = getRepcreatenum(p);
+                p->rep[i] = 1;
+                strcpy(p->replica[i],dn);
+                p->d_ino[i] = ino;
+                p->d_type[i] = type;
+        }
+	filelist_display();
+        //datanode_filewrite();
+        return 0;
+}
+datanode* fetch_datanode();
+char* getfiledn(char *name, char *host)
+{
+        filelist *p;
+        if( (p=filelist_search(name)) == NULL)
+	{
+		datanode *dn = fetch_datanode();
+		if(dn == NULL)
+			return NULL;
+		return dn->node;
+	}
+	else
+	{
+		int i = getRepfetchnum(p);
+		if( i != -1)
+		{
+			return p->replica[i];
+		}
+		else
+		{
+			i = getRepfetchnum1(p);
+			if( i != -1)
+			return p->replica[i];
+			else
+				return NULL;
+		}
+	}
+}
+
+int initFile(filelist *f)
+{
+	printf("InitFile\n");
+	int i = 0;
+	for ( i = 0; i < 50; i++)
+	{
+		f->rep[i] = 0;
+	}
+}
+
+int getRepcreatenum(filelist *f)
+{
+	printf("Get rep create num ()\n");
+	int i = 0;
+	for (i = 0; i < 50; i++)
+	{	
+		if(f->rep[i] == 0)
+			return i;	
+	}
+	printf("Out of get rep create num\n");
+	return -1;
+}
+
+int getRepfetchnum(filelist *f)
+{
+        int i = 0;
+        for (i = 0; i < 50; i++)
+        {
+                if(f->rep[i] == 1)
+		{
+			datanode *dn = datanode_search(f->replica[i]);
+			if (check_nodealive(dn->node) == 1)
+                        	return i;
+		}
+        }
+        return -1;
+}
+
+int getRepfetchnum1(filelist *f)
+{
+        int i = 0;
+        for (i = 0; i < 50; i++)
+        {
+                if(f->rep[i] > 1)
+		{
+			datanode *dn = datanode_search(f->replica[i]);
+			if (check_nodealive(dn->node) == 1)
+                        	return i;
+		}
+        }
+        return -1;
+}
+
 
 int writednconfig(char *buf)
 {
@@ -132,7 +270,6 @@ void initdatanodelist(void)
 	}
 }
 
-datanode* datanode_search(char []);
 
 int datanode_insert(char name[], char ip[],int alive)
 {
@@ -164,6 +301,7 @@ int datanode_insert(char name[], char ip[],int alive)
 	{
 		p->alive = 1;
 	}
+	filenode_insert(DATANODE_DIR,0,0,name);
 	datanode_filewrite();
         return 0;
 }
@@ -192,6 +330,35 @@ datanode* datanode_search(char name[])
         return entry;
 }
 
+filelist* filelist_search(char name[])
+{
+	char *aname = malloc(strlen(name) + 1);
+	strcpy(aname,name);
+	if( aname[strlen(name)-1] == '/')
+		aname[strlen(name)-1]='\0';
+        filelist *entry = NULL;
+        sfile = firstsfile;
+        if( sfile == NULL )
+        {
+                return entry;
+        }
+        else
+        {
+                while(sfile != NULL)
+                {
+                        if( strcmp(sfile->name,name) == 0  || strcmp(sfile->name,aname) == 0)
+                        {
+				free(aname);
+                                return sfile; 
+                        }
+                        sfile = sfile->next;
+                }
+        }
+	free(aname);
+        printf("End of it\n");
+        return entry;
+}
+
 datanode* fetch_datanode()
 {	
 	printf("Fetch datanode\n");
@@ -208,7 +375,10 @@ datanode* fetch_datanode()
 			if(dlist->alive != 0)
 			{
 				if(check_nodealive(dlist->node) == 1)
+				{
+				datanode_filewrite();
                 		return dlist;
+				}
 				else dlist->alive = 0;
 			}
 			dlist = dlist->next;
@@ -239,6 +409,28 @@ int remove_datanode(datanode *dlist1)
         return 0;
 }
 
+//Dont use this..
+int remove_fileentry(filelist *sfile1)
+{
+        printf("REmove fileentry : %s\n", sfile1->name);
+        if(sfile1->next == NULL)
+        {
+                free(sfile1);
+        }
+        else
+        {
+                filelist *tmp = sfile1->next;
+		strcpy(sfile1->name,sfile1->next->name);
+                //strcpy(dlist1->node,dlist1->next->node);
+                //strcpy(dlist1->ip,dlist1->next->ip);
+                //dlist1->alive = dlist->next->alive;
+                //dlist1->next = tmp->next;
+                printf("Before free\n");
+                free(tmp);
+        }
+        return 0;
+}
+
 void datanode_display()
 {
 	printf("Display Datanode\n");
@@ -256,6 +448,25 @@ void datanode_display()
                 }
         }
 	printf("End of display\n");
+}
+
+void filelist_display()
+{
+        printf("Display Filelist\n");
+       	sfile = firstsfile;
+        if(sfile == NULL )
+        {
+                printf("Empty Datanode list\n");
+        }
+        else
+        {
+                while(sfile != NULL)
+                {
+                        printf("name: %s, d_ino: %d, d_type : %d\n", sfile->name, sfile->d_ino, sfile->d_type);
+                        sfile = sfile->next;
+                }
+        }
+        printf("End of display\n");
 }
 
 void datanode_filewrite()
@@ -288,6 +499,34 @@ void datanode_filewrite()
                 }
         }
 	writednconfig(dn_buf);
+}
+
+void datanode_sendlist(char *dn_buf)
+{
+        dlist = firstdlist;
+        strcpy(dn_buf,"");
+        char buffer[30];
+        memset(buffer,'\0',30);
+        if( dlist == NULL )
+        {
+                printf("Empty Datanode list\n");
+        }
+        else
+        {
+                while(dlist != NULL)
+                {
+                        strcat(dn_buf,dlist->node);
+                        strcat(dn_buf,",");
+                        strcat(dn_buf,dlist->ip);
+                        strcat(dn_buf,",");
+
+                        memset(buffer,'\0',30);
+                        snprintf(buffer,10,"%d",dlist->alive);
+                        strcat(dn_buf,buffer);
+                        strcat(dn_buf,",");
+                        dlist = dlist->next;
+                }
+        }
 }
 
 #endif
